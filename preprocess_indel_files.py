@@ -157,9 +157,7 @@ def preprocess_indel_files(data_folder):
   ######
   ###### here we filter out all indels with mutant read frequency less than 0.01
   ######
-  for i in range(np.size(rare_indel_index)):
-    del name_indel_type_unique[rare_indel_index[i]]
-
+  name_indel_type_unique = np.delete(name_indel_type_unique, rare_indel_index).tolist()
   indel_count_matrix = np.delete(indel_count_matrix, rare_indel_index, 0)
   indel_prop_matrix = np.delete(indel_prop_matrix, rare_indel_index, 0)
   length_indel = np.delete(length_indel, rare_indel_index, 0)
