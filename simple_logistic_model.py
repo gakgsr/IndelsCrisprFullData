@@ -144,51 +144,59 @@ sequence_file_name = "sequence_pam_gene_grna_big_file.csv"
 data_folder = "/Users/amirali/Projects/CRISPR-data-Feb18/20nt_counts_only/"
 
 
-#name_genes_unique, name_genes_grna_unique, name_indel_type_unique, indel_count_matrix, indel_prop_matrix, length_indel = preprocess_indel_files(data_folder)
-#pickle.dump(name_genes_unique, open('storage/name_genes_unique.p', 'wb'))
-#pickle.dump(name_genes_grna_unique, open('storage/name_genes_grna_unique.p', 'wb'))
-#pickle.dump(name_indel_type_unique, open('storage/name_indel_type_unique.p', 'wb'))
-#pickle.dump(indel_count_matrix, open('storage/indel_count_matrix.p', 'wb'))
-#pickle.dump(indel_prop_matrix, open('storage/indel_prop_matrix.p', 'wb'))
-#pickle.dump(length_indel, open('storage/length_indel.p', 'wb'))
+name_genes_unique, name_genes_grna_unique, name_indel_type_unique, indel_count_matrix, indel_prop_matrix, length_indel = preprocess_indel_files(data_folder)
+pickle.dump(name_genes_unique, open('storage/name_genes_unique.p', 'wb'))
+pickle.dump(name_genes_grna_unique, open('storage/name_genes_grna_unique.p', 'wb'))
+pickle.dump(name_indel_type_unique, open('storage/name_indel_type_unique.p', 'wb'))
+pickle.dump(indel_count_matrix, open('storage/indel_count_matrix.p', 'wb'))
+pickle.dump(indel_prop_matrix, open('storage/indel_prop_matrix.p', 'wb'))
+pickle.dump(length_indel, open('storage/length_indel.p', 'wb'))
 
-print "loading name_genes_unique ..."
-name_genes_unique = pickle.load(open('storage/name_genes_unique.p', 'rb'))
-#print np.shape(name_genes_unique)
-#print name_genes_unique
-
-print "loading name_genes_grna_unique ..."
-name_genes_grna_unique = pickle.load(open('storage/name_genes_grna_unique.p', 'rb'))
-print "loading name_indel_type_unique ..."
-name_indel_type_unique = pickle.load(open('storage/name_indel_type_unique.p', 'rb'))
-print "loading indel_count_matrix ..."
-indel_count_matrix = pickle.load(open('storage/indel_count_matrix.p', 'rb'))
-print "loading indel_prop_matrix ..."
-indel_prop_matrix = pickle.load(open('storage/indel_prop_matrix.p', 'rb'))
-print "loading length_indel ..."
-length_indel = pickle.load(open('storage/length_indel.p', 'rb'))
+print np.shape(name_genes_unique)
+print np.shape(name_genes_grna_unique)
+print np.shape(name_indel_type_unique)
+print np.shape(indel_count_matrix)
+print np.shape(indel_prop_matrix)
+print np.shape(length_indel)
 
 
-
-
-count_insertions_gene_grna, count_deletions_gene_grna = compute_summary_statistics(name_genes_grna_unique, name_indel_type_unique, indel_count_matrix, indel_prop_matrix)
-print np.shape(count_insertions_gene_grna)
-print np.shape(count_deletions_gene_grna)
-#print count_insertions_gene_grna
-#print count_deletions_gene_grna
-
-sequence_pam_per_gene_grna, sequence_per_gene_grna, pam_per_gene_grna = load_gene_sequence(sequence_file_name, name_genes_grna_unique)
-print '---'
-print np.shape(sequence_pam_per_gene_grna)
-print np.shape(sequence_per_gene_grna)
-print np.shape(pam_per_gene_grna)
-#print "Using both grna sequence and PAM"
-#cross_validation_model(sequence_pam_per_gene_grna, count_insertions_gene_grna, count_deletions_gene_grna)
-print "Using only grna sequence"
-cross_validation_model(sequence_per_gene_grna, count_insertions_gene_grna, count_deletions_gene_grna)
-#print "Using only PAM"
-#cross_validation_model(pam_per_gene_grna, count_insertions_gene_grna, count_deletions_gene_grna)
-#print "Using Kmers"
-#k_mer_list = load_gene_sequence_k_mer(sequence_file_name, name_genes_grna_unique, 1)
-#cross_validation_model(k_mer_list, count_insertions_gene_grna, count_deletions_gene_grna)
-
+# print "loading name_genes_unique ..."
+# name_genes_unique = pickle.load(open('storage/name_genes_unique.p', 'rb'))
+# #print np.shape(name_genes_unique)
+# #print name_genes_unique
+#
+# print "loading name_genes_grna_unique ..."
+# name_genes_grna_unique = pickle.load(open('storage/name_genes_grna_unique.p', 'rb'))
+# print "loading name_indel_type_unique ..."
+# name_indel_type_unique = pickle.load(open('storage/name_indel_type_unique.p', 'rb'))
+# print "loading indel_count_matrix ..."
+# indel_count_matrix = pickle.load(open('storage/indel_count_matrix.p', 'rb'))
+# print "loading indel_prop_matrix ..."
+# indel_prop_matrix = pickle.load(open('storage/indel_prop_matrix.p', 'rb'))
+# print "loading length_indel ..."
+# length_indel = pickle.load(open('storage/length_indel.p', 'rb'))
+#
+#
+#
+#
+# count_insertions_gene_grna, count_deletions_gene_grna = compute_summary_statistics(name_genes_grna_unique, name_indel_type_unique, indel_count_matrix, indel_prop_matrix)
+# print np.shape(count_insertions_gene_grna)
+# print np.shape(count_deletions_gene_grna)
+# #print count_insertions_gene_grna
+# #print count_deletions_gene_grna
+#
+# sequence_pam_per_gene_grna, sequence_per_gene_grna, pam_per_gene_grna = load_gene_sequence(sequence_file_name, name_genes_grna_unique)
+# print '---'
+# print np.shape(sequence_pam_per_gene_grna)
+# print np.shape(sequence_per_gene_grna)
+# print np.shape(pam_per_gene_grna)
+# #print "Using both grna sequence and PAM"
+# #cross_validation_model(sequence_pam_per_gene_grna, count_insertions_gene_grna, count_deletions_gene_grna)
+# print "Using only grna sequence"
+# cross_validation_model(sequence_per_gene_grna, count_insertions_gene_grna, count_deletions_gene_grna)
+# #print "Using only PAM"
+# #cross_validation_model(pam_per_gene_grna, count_insertions_gene_grna, count_deletions_gene_grna)
+# #print "Using Kmers"
+# #k_mer_list = load_gene_sequence_k_mer(sequence_file_name, name_genes_grna_unique, 1)
+# #cross_validation_model(k_mer_list, count_insertions_gene_grna, count_deletions_gene_grna)
+#

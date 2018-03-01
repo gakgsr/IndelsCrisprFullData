@@ -104,6 +104,15 @@ def preprocess_indel_files(data_folder):
         i += 1
 
 
+  # finding the index for the indels with frequency of mutatnt reads < 0.01
+  rare_indel_index = []
+  indel_frac_mutant_read_matrix = indel_count_matrix / np.reshape(np.sum(indel_count_matrix, axis=0), (1, -1))
+  print np.shape(indel_frac_mutant_read_matrix)
+  for row_index in range(np.shape(indel_frac_mutant_read_matrix)[0]):
+    if max(indel_frac_mutant_read_matrix[row_index]) < 0.01:
+      rare_indel_index.append(row_index)
+
+
   ##
   # Process the proportions file to get the proportions data
   indel_prop_matrix = np.zeros((len(name_indel_type_unique), len(name_genes_grna_unique)))
@@ -145,7 +154,17 @@ def preprocess_indel_files(data_folder):
         i += 1
 
 
-  ##
+  ######
+  ###### here we filter out all indels with mutant read frequency less than 0.01
+  ######
+  for i in range(np.size(rare_indel_index)):
+    del name_indel_type_unique[rare_indel_index[i]]
+
+  indel_count_matrix = np.delete(indel_count_matrix, rare_indel_index, 0)
+  indel_prop_matrix = np.delete(indel_prop_matrix, rare_indel_index, 0)
+  length_indel = np.delete(length_indel, rare_indel_index, 0)
+  ######
+
 
   # Save the indel counts, indel type, and gene-grna name information
   indel_type_file = open('indel_type.txt', 'w')
