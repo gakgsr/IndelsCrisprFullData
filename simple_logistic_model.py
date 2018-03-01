@@ -10,6 +10,7 @@ import warnings
 warnings.filterwarnings("ignore")
 import time
 import pickle
+from sequence_logos import plot_seq_logo
 
 
 def one_hot_index(nucleotide):
@@ -78,6 +79,7 @@ def perform_logistic_regression(sequence_pam_per_gene_grna, count_insertions_gen
     plt.plot(log_reg.coef_[0, :])
     plt.savefig('ins_log_coeff.pdf')
     plt.clf()
+    plot_seq_logo(log_reg.coef_[0, :], "Insertion_logistic")
   #print "Test accuracy score for insertions: %f" % insertions_accuracy
   #print "Train accuracy score for insertions: %f" % metrics.accuracy_score(count_insertions_gene_grna_binary[train_index], log_reg_pred_train)
   #print "----"
@@ -93,6 +95,7 @@ def perform_logistic_regression(sequence_pam_per_gene_grna, count_insertions_gen
     plt.plot(log_reg.coef_[0, :])
     plt.savefig('del_log_coeff.pdf')
     plt.clf()
+    plot_seq_logo(log_reg.coef_[0, :], "Deletion_logistic")
   #print log_reg_pred
   #print "Test accuracy score for deletions: %f" % deletions_accuracy
   #print "Train accuracy score for deletions: %f" % metrics.accuracy_score(count_deletions_gene_grna_binary[train_index], log_reg_pred_train)
