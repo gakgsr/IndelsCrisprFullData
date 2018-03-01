@@ -33,11 +33,11 @@ def load_gene_sequence(sequence_file_name, name_genes_grna_unique):
   return sequence_per_gene_grna_list, pam_per_gene_grna_list
 
 
-#data_folder = "../IndelsData/"
+data_folder = "../IndelsFullData/"
 #sequence_file_name = "sequence_pam_gene_grna.csv"
 sequence_file_name = "sequence_pam_gene_grna_big_file.csv"
 #data_folder = "/Users/amirali/Projects/CRISPR-data/R data/AM_TechMerg_Summary/"
-data_folder = "/Users/amirali/Projects/CRISPR-data-Feb18/20nt_counts_only/"
+#data_folder = "/Users/amirali/Projects/CRISPR-data-Feb18/20nt_counts_only/"
 #name_genes_unique, name_genes_grna_unique, name_indel_type_unique, indel_count_matrix, indel_prop_matrix, length_indel = preprocess_indel_files(data_folder)
 print "loading name_genes_unique ..."
 name_genes_unique = pickle.load(open('storage/name_genes_unique.p', 'rb'))

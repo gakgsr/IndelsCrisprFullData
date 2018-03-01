@@ -64,7 +64,7 @@ def load_gene_sequence_k_mer(sequence_file_name, name_genes_grna_unique, k):
   return k_mer_list
 
 
-def perform_logistic_regression(sequence_pam_per_gene_grna, count_insertions_gene_grna_binary, count_deletions_gene_grna_binary, train_index, test_index, to_plot = False):
+def perform_logistic_regression(sequence_pam_per_gene_grna, count_insertions_gene_grna_binary, count_deletions_gene_grna_binary, train_index, test_index, ins_coeff, del_coeff, to_plot = False):
   log_reg = linear_model.LogisticRegression(C=1000)
   #print "----"
   #print "Number of positive testing samples in insertions is %f" % np.sum(count_insertions_gene_grna_binary[test_index])
@@ -75,6 +75,7 @@ def perform_logistic_regression(sequence_pam_per_gene_grna, count_insertions_gen
   log_reg_pred = log_reg.predict(sequence_pam_per_gene_grna[test_index])
   log_reg_pred_train = log_reg.predict(sequence_pam_per_gene_grna[train_index])
   insertions_accuracy = metrics.accuracy_score(count_insertions_gene_grna_binary[test_index], log_reg_pred)
+  ins_coeff.append(log_reg.coef_[0, :])
   if to_plot:
     plt.plot(log_reg.coef_[0, :])
     plt.savefig('ins_log_coeff.pdf')
@@ -91,6 +92,7 @@ def perform_logistic_regression(sequence_pam_per_gene_grna, count_insertions_gen
   log_reg_pred = log_reg.predict(sequence_pam_per_gene_grna[test_index])
   log_reg_pred_train = log_reg.predict(sequence_pam_per_gene_grna[train_index])
   deletions_accuracy = metrics.accuracy_score(count_deletions_gene_grna_binary[test_index], log_reg_pred)
+  del_coeff.append(log_reg.coef_[0, :])
   if to_plot:
     plt.plot(log_reg.coef_[0, :])
     plt.savefig('del_log_coeff.pdf')
@@ -105,6 +107,8 @@ def perform_logistic_regression(sequence_pam_per_gene_grna, count_insertions_gen
 def cross_validation_model(sequence_pam_per_gene_grna, count_insertions_gene_grna, count_deletions_gene_grna):
   total_insertion_avg_accuracy = []
   total_deletion_avg_accuracy = []
+  ins_coeff = []
+  del_coeff = []
   for repeat in range(5):
     number_of_splits = 4
     fold_valid = KFold(n_splits = number_of_splits, shuffle = True, random_state = repeat)
@@ -123,7 +127,7 @@ def cross_validation_model(sequence_pam_per_gene_grna, count_insertions_gene_grn
       to_plot = False
       if repeat == 3 and fold == 2:
         to_plot = True
-      accuracy_score = perform_logistic_regression(sequence_pam_per_gene_grna, count_insertions_gene_grna_binary, count_deletions_gene_grna_binary, train_index, test_index, to_plot)
+      accuracy_score = perform_logistic_regression(sequence_pam_per_gene_grna, count_insertions_gene_grna_binary, count_deletions_gene_grna_binary, train_index, test_index, ins_coeff, del_coeff, to_plot)
       insertion_avg_accuracy += accuracy_score[0]
       deletion_avg_accuracy += accuracy_score[1]
       fold += 1
@@ -135,13 +139,22 @@ def cross_validation_model(sequence_pam_per_gene_grna, count_insertions_gene_grn
   print "Variation in accuracy for insertions predictions is %f" % np.var(total_insertion_avg_accuracy)
   print "Average accuracy for deletions predictions is %f" % np.mean(total_deletion_avg_accuracy)
   print "Variation in accuracy for deletions predictions is %f" % np.var(total_deletion_avg_accuracy)
+  ins_coeff = np.array(ins_coeff)
+  del_coeff = np.array(del_coeff)
+  print "Average coefficients for insertions predictions is "
+  print np.mean(ins_coeff, axis = 0)
+  print "Variation in coefficients for insertions predictions is "
+  print np.var(ins_coeff, axis = 0)
+  print "Average coefficients for deletions predictions is "
+  print np.mean(del_coeff, axis = 0)
+  print "Variation in coefficients for deletions predictions is "
+  print np.var(del_coeff, axis = 0)
 
 
-
-#data_folder = "../IndelsData/"
+data_folder = "../IndelsFullData/"
 sequence_file_name = "sequence_pam_gene_grna_big_file.csv"
 #data_folder = "/Users/amirali/Projects/CRISPR-data/R data/AM_TechMerg_Summary/"
-data_folder = "/Users/amirali/Projects/CRISPR-data-Feb18/20nt_counts_only/"
+#data_folder = "/Users/amirali/Projects/CRISPR-data-Feb18/20nt_counts_only/"
 
 
 #name_genes_unique, name_genes_grna_unique, name_indel_type_unique, indel_count_matrix, indel_prop_matrix, length_indel = preprocess_indel_files(data_folder)

@@ -39,19 +39,21 @@ def plot_seq_logo(logo_heights, name):
   fig, ax = plt.subplots(figsize = (10, 3))
   x = 1
   maxi = 0
+  mini = 0
   for i in range(logo_heights.shape[0]):
-    y = 0
     list_of_heights = [('A', logo_heights[i, 0]), ('C', logo_heights[i, 1]), ('G', logo_heights[i, 2]), ('T', logo_heights[i, 3])]
     list_of_heights = sorted(list_of_heights, key = lambda x: x[1])
+    y = np.sum(logo_heights[i][logo_heights[i] < 0])
+    mini = min(y, mini)
     for base, score in list_of_heights:
-      letterAt(base, x, y, score, ax)
-      y += score
+      letterAt(base, x, y, abs(score), ax)
+      y += abs(score)
     x += 1
     maxi = max(maxi, y)
 
   plt.xticks(range(1, x))
   plt.xlim((0, x)) 
-  plt.ylim((0, maxi)) 
+  plt.ylim((mini, maxi)) 
   plt.tight_layout()      
   plt.savefig('sequence_logo_' + name + '.pdf')
   plt.clf()

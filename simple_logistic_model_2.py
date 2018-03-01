@@ -52,7 +52,7 @@ def load_gene_sequence(sequence_file_name, name_genes_grna_unique):
 #   return np.reshape(sequence_pam_per_gene_grna, (len(name_genes_grna_unique), -1))
 
 
-def perform_logistic_regression(sequence_pam_per_gene_grna, count_insertions_gene_grna_binary, count_deletions_gene_grna_binary, train_index, test_index):
+def perform_logistic_regression(sequence_pam_per_gene_grna, count_insertions_gene_grna_binary, count_deletions_gene_grna_binary, train_index, test_index, ins_coeff, del_coeff):
   log_reg = linear_model.LogisticRegression(C=1e5)
   print "----"
   print "Number of positive testing samples in insertions is %f" % np.sum(count_insertions_gene_grna_binary[test_index])
@@ -63,6 +63,7 @@ def perform_logistic_regression(sequence_pam_per_gene_grna, count_insertions_gen
   log_reg_pred = log_reg.predict(sequence_pam_per_gene_grna[test_index])
   log_reg_pred_train = log_reg.predict(sequence_pam_per_gene_grna[train_index])
   insertions_accuracy = metrics.accuracy_score(count_insertions_gene_grna_binary[test_index], log_reg_pred)
+  ins_coeff.append(log_reg.coef_[0, :])
   #temp = np.copy(count_insertions_gene_grna_binary[test_index])
   #np.random.shuffle(temp)
   #insertions_accuracy = metrics.accuracy_score(temp,count_insertions_gene_grna_binary[test_index])
@@ -78,6 +79,7 @@ def perform_logistic_regression(sequence_pam_per_gene_grna, count_insertions_gen
   log_reg_pred = log_reg.predict(sequence_pam_per_gene_grna[test_index])
   log_reg_pred_train = log_reg.predict(sequence_pam_per_gene_grna[train_index])
   deletions_accuracy = metrics.accuracy_score(count_deletions_gene_grna_binary[test_index], log_reg_pred)
+  del_coeff.append(log_reg.coef_[0, :])
   #temp = np.copy(count_insertions_gene_grna_binary[test_index])
   #np.random.shuffle(temp)
   #deletions_accuracy = metrics.accuracy_score(temp,count_insertions_gene_grna_binary[test_index])
@@ -89,6 +91,8 @@ def perform_logistic_regression(sequence_pam_per_gene_grna, count_insertions_gen
 def cross_validation_model(sequence_pam_per_gene_grna, count_insertions_gene_grna, count_deletions_gene_grna):
   total_insertion_avg_accuracy = []
   total_deletion_avg_accuracy = []
+  ins_coeff = []
+  del_coeff = []
   for repeat in range(2000):
     fold_valid = KFold(n_splits = 3, shuffle = True, random_state = repeat)
     insertion_avg_accuracy = 0.0
@@ -102,7 +106,7 @@ def cross_validation_model(sequence_pam_per_gene_grna, count_insertions_gene_grn
     count_deletions_gene_grna_binary[count_deletions_gene_grna >= threshold_deletions] = 1
     count_deletions_gene_grna_binary[count_deletions_gene_grna < threshold_deletions] = 0
     for train_index, test_index in fold_valid.split(sequence_pam_per_gene_grna):
-      accuracy_score = perform_logistic_regression(sequence_pam_per_gene_grna, count_insertions_gene_grna_binary, count_deletions_gene_grna_binary, train_index, test_index)
+      accuracy_score = perform_logistic_regression(sequence_pam_per_gene_grna, count_insertions_gene_grna_binary, count_deletions_gene_grna_binary, train_index, test_index, ins_coeff, del_coeff)
       insertion_avg_accuracy += accuracy_score[0]
       deletion_avg_accuracy += accuracy_score[1]
     insertion_avg_accuracy /= 3.0
@@ -114,7 +118,16 @@ def cross_validation_model(sequence_pam_per_gene_grna, count_insertions_gene_grn
   print "+-", np.std(total_insertion_avg_accuracy)
   print "Average accuracy for deletions predictions is %f" % np.mean(total_deletion_avg_accuracy)
   print "+-", np.std(total_deletion_avg_accuracy)
-
+  ins_coeff = np.array(ins_coeff)
+  del_coeff = np.array(del_coeff)
+  print "Average coefficients for insertions predictions is "
+  print np.mean(ins_coeff, axis = 0)
+  print "Variation in coefficients for insertions predictions is "
+  print np.var(ins_coeff, axis = 0)
+  print "Average coefficients for deletions predictions is "
+  print np.mean(del_coeff, axis = 0)
+  print "Variation in coefficients for deletions predictions is "
+  print np.var(del_coeff, axis = 0)
 
 
 #data_folder = "../IndelsData/"

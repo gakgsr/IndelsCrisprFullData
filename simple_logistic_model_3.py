@@ -35,7 +35,7 @@ def load_gene_sequence(sequence_file_name, name_genes_grna_unique):
   return np.reshape(sequence_pam_per_gene_grna, (len(name_genes_grna_unique), -1)), np.reshape(sequence_pam_per_gene_grna[:, :20, :], (len(name_genes_grna_unique), -1)), np.reshape(sequence_pam_per_gene_grna[:, 20:, :], (len(name_genes_grna_unique), -1))
 
 
-def perform_logistic_regression(sequence_pam_per_gene_grna, count_insertions_gene_grna_binary, count_deletions_gene_grna_binary, train_index, test_index):
+def perform_logistic_regression(sequence_pam_per_gene_grna, count_insertions_gene_grna_binary, count_deletions_gene_grna_binary, train_index, test_index, ins_coeff, del_coeff):
   log_reg = linear_model.LogisticRegression(C=1e5)
   #print "----"
   #print "Number of positive testing samples in insertions is %f" % np.sum(count_insertions_gene_grna_binary[test_index])
@@ -52,6 +52,7 @@ def perform_logistic_regression(sequence_pam_per_gene_grna, count_insertions_gen
   temp = number_of_ones_in_training*[1]+(np.size(test_index)-number_of_ones_in_training)*[0]
   np.random.shuffle(temp)
   insertions_accuracy = metrics.accuracy_score(temp,count_insertions_gene_grna_binary[test_index])
+  ins_coeff.append(log_reg.coef_[0, :])
   #print "Test accuracy score for insertions: %f" % insertions_accuracy
   #print "Train accuracy score for insertions: %f" % metrics.accuracy_score(count_insertions_gene_grna_binary[train_index], log_reg_pred_train)
   #print "----"
@@ -71,12 +72,15 @@ def perform_logistic_regression(sequence_pam_per_gene_grna, count_insertions_gen
   temp = number_of_ones_in_training*[1]+(np.size(test_index)-number_of_ones_in_training)*[0]
   np.random.shuffle(temp)
   deletions_accuracy = metrics.accuracy_score(temp,count_insertions_gene_grna_binary[test_index])
+  del_coeff.append(log_reg.coef_[0, :])
   return insertions_accuracy, deletions_accuracy
 
 
 def cross_validation_model(sequence_pam_per_gene_grna, count_insertions_gene_grna, count_deletions_gene_grna):
   total_insertion_avg_accuracy = []
   total_deletion_avg_accuracy = []
+  ins_coeff = []
+  del_coeff = []
   for repeat in range(2000):
     fold_valid = KFold(n_splits = 3, shuffle = True, random_state = repeat)
     insertion_avg_accuracy = 0.0
@@ -90,7 +94,7 @@ def cross_validation_model(sequence_pam_per_gene_grna, count_insertions_gene_grn
     count_deletions_gene_grna_binary[count_deletions_gene_grna >= threshold_deletions] = 1
     count_deletions_gene_grna_binary[count_deletions_gene_grna < threshold_deletions] = 0
     for train_index, test_index in fold_valid.split(sequence_pam_per_gene_grna):
-      accuracy_score = perform_logistic_regression(sequence_pam_per_gene_grna, count_insertions_gene_grna_binary, count_deletions_gene_grna_binary, train_index, test_index)
+      accuracy_score = perform_logistic_regression(sequence_pam_per_gene_grna, count_insertions_gene_grna_binary, count_deletions_gene_grna_binary, train_index, test_index, ins_coeff, del_coeff)
       insertion_avg_accuracy += accuracy_score[0]
       deletion_avg_accuracy += accuracy_score[1]
     insertion_avg_accuracy /= 3.0
@@ -101,12 +105,21 @@ def cross_validation_model(sequence_pam_per_gene_grna, count_insertions_gene_grn
   print "Variation in accuracy for insertions predictions is %f" % np.var(total_insertion_avg_accuracy)
   print "Average accuracy for deletions predictions is %f" % np.mean(total_deletion_avg_accuracy)
   print "Variation in accuracy for deletions predictions is %f" % np.var(total_deletion_avg_accuracy)
+  ins_coeff = np.array(ins_coeff)
+  del_coeff = np.array(del_coeff)
+  print "Average coefficients for insertions predictions is "
+  print np.mean(ins_coeff, axis = 0)
+  print "Variation in coefficients for insertions predictions is "
+  print np.var(ins_coeff, axis = 0)
+  print "Average coefficients for deletions predictions is "
+  print np.mean(del_coeff, axis = 0)
+  print "Variation in coefficients for deletions predictions is "
+  print np.var(del_coeff, axis = 0)
 
 
-
-#data_folder = "../IndelsData/"
+data_folder = "../IndelsFullData/"
 sequence_file_name = "sequence_pam_gene_grna.csv"
-data_folder = "/Users/amirali/Projects/CRISPR-data/R data/AM_TechMerg_Summary/"
+#data_folder = "/Users/amirali/Projects/CRISPR-data/R data/AM_TechMerg_Summary/"
 name_genes_unique, name_genes_grna_unique, name_indel_type_unique, indel_count_matrix, indel_prop_matrix = preprocess_indel_files(data_folder)
 count_insertions_gene_grna, count_deletions_gene_grna = compute_summary_statistics(name_genes_grna_unique, name_indel_type_unique, indel_count_matrix, indel_prop_matrix)
 sequence_pam_per_gene_grna, sequence_per_gene_grna, pam_per_gene_grna = load_gene_sequence(sequence_file_name, name_genes_grna_unique)
