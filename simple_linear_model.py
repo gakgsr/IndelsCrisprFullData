@@ -1,11 +1,14 @@
 from preprocess_indel_files import preprocess_indel_files
 from compute_summary_statistic import compute_summary_statistics
+from simple_summary_analysis import avg_length_pred
 import numpy as np
 from sklearn import linear_model, metrics
 from sklearn.model_selection import KFold
 import matplotlib
 matplotlib.use('agg')
 import matplotlib.pyplot as plt
+import pickle
+from sequence_logos import plot_seq_logo
 
 
 def one_hot_index(nucleotide):
@@ -74,6 +77,7 @@ def perform_logistic_regression(sequence_pam_per_gene_grna, count_insertions_gen
     plt.plot(lin_reg.coef_)
     plt.savefig('ins_lin_coeff.pdf')
     plt.clf()
+    plot_seq_logo(lin_reg.coef_, "Insertion_linear")
   #insertions_r2_score = lin_reg.score(sequence_pam_per_gene_grna[test_index], count_insertions_gene_grna_binary[test_index])
   #print "Test mse_score score for insertions: %f" % insertions_r2_score
   #print "Train mse_score score for insertions: %f" % lin_reg.score(sequence_pam_per_gene_grna[train_index], count_insertions_gene_grna_binary[train_index])
@@ -91,6 +95,7 @@ def perform_logistic_regression(sequence_pam_per_gene_grna, count_insertions_gen
     plt.plot(lin_reg.coef_)
     plt.savefig('del_lin_coeff.pdf')
     plt.clf()
+    plot_seq_logo(lin_reg.coef_, "Deletion_linear")
   #print "Test r2_score score for deletions: %f" % deletions_r2_score
   #print "Train r2_score score for deletions: %f" % lin_reg.score(sequence_pam_per_gene_grna[train_index], count_deletions_gene_grna_binary[train_index])
   return insertions_rmse, deletions_rmse
@@ -138,11 +143,13 @@ def cross_validation_model(sequence_pam_per_gene_grna, count_insertions_gene_grn
 
 
 #data_folder = "../IndelsFullData/"
-sequence_file_name = "sequence_pam_gene_grna.csv"
-data_folder = "/Users/amirali/Projects/CRISPR-data/R data/AM_TechMerg_Summary/"
-name_genes_unique, name_genes_grna_unique, name_indel_type_unique, indel_count_matrix, indel_prop_matrix, length_indel = preprocess_indel_files(data_folder)
+sequence_file_name = "sequence_pam_gene_grna_big_file.csv"
+#data_folder = "/Users/amirali/Projects/CRISPR-data/R data/AM_TechMerg_Summary/"
+#name_genes_unique, name_genes_grna_unique, name_indel_type_unique, indel_count_matrix, indel_prop_matrix, length_indel = preprocess_indel_files(data_folder)
 #count_insertions_gene_grna, count_deletions_gene_grna = compute_summary_statistics(name_genes_grna_unique, name_indel_type_unique, indel_count_matrix, indel_prop_matrix)
 ##
+
+'''
 # Compute the proportions of insertions and deletions in each file
 prop_insertions_gene_grna = np.zeros(len(name_genes_grna_unique), dtype = float)
 prop_deletions_gene_grna = np.zeros(len(name_genes_grna_unique), dtype = float)
@@ -154,6 +161,26 @@ for i in range(len(name_genes_grna_unique)):
     if name_indel_type_unique[j].find('D') != -1:
       prop_deletions_gene_grna[i] += np.mean(indel_prop_matrix[j][3*i:3*i+3], dtype = float)
 ##
+'''
+
+print "loading name_genes_unique ..."
+name_genes_unique = pickle.load(open('storage/name_genes_unique.p', 'rb'))
+print "loading name_genes_grna_unique ..."
+name_genes_grna_unique = pickle.load(open('storage/name_genes_grna_unique.p', 'rb'))
+print "loading name_indel_type_unique ..."
+name_indel_type_unique = pickle.load(open('storage/name_indel_type_unique.p', 'rb'))
+print "loading indel_count_matrix ..."
+indel_count_matrix = pickle.load(open('storage/indel_count_matrix.p', 'rb'))
+print "loading indel_prop_matrix ..."
+indel_prop_matrix = pickle.load(open('storage/indel_prop_matrix.p', 'rb'))
+print "loading length_indel ..."
+length_indel = pickle.load(open('storage/length_indel.p', 'rb'))
+
+
+
+
+#count_insertions_gene_grna, count_deletions_gene_grna = compute_summary_statistics(name_genes_grna_unique, name_indel_type_unique, indel_count_matrix, indel_prop_matrix)
+prop_insertions_gene_grna, prop_deletions_gene_grna = avg_length_pred()
 
 sequence_pam_per_gene_grna, sequence_per_gene_grna, pam_per_gene_grna = load_gene_sequence(sequence_file_name, name_genes_grna_unique)
 print "Using both grna sequence and PAM"
