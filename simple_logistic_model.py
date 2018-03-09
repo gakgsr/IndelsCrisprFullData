@@ -37,6 +37,38 @@ def load_gene_sequence(sequence_file_name, name_genes_grna_unique):
   # Scikit needs only a 2-d matrix as input, so reshape and return
   return np.reshape(sequence_pam_per_gene_grna, (len(name_genes_grna_unique), -1)), np.reshape(sequence_pam_per_gene_grna[:, :20, :], (len(name_genes_grna_unique), -1)), np.reshape(sequence_pam_per_gene_grna[:, 20:, :], (len(name_genes_grna_unique), -1))
 
+
+def load_gene_sequence_interaction(sequence_file_name, name_genes_grna_unique):
+  # Create numpy matrix of size len(name_genes_grna_unique) * 23, to store the sequence as one-hot encoded
+  sequence_pam_per_gene_grna = np.zeros((len(name_genes_grna_unique), 23, 4), dtype = bool)
+  sequence_pam_per_gene_grna_interaction = np.zeros((len(name_genes_grna_unique), 20, 20, 4, 4), dtype=bool) # 15 to 20
+  # Obtain the grna and PAM sequence corresponding to name_genes_grna_unique
+  with open(sequence_file_name) as f:
+    for line in f:
+      line = line.replace('"', '')
+      line = line.replace(' ', '')
+      line = line.replace('\n', '')
+      l = line.split(',')
+      if l[1] + '-' + l[0] in name_genes_grna_unique:
+        index_in_name_genes_grna_unique = name_genes_grna_unique.index(l[1] + '-' + l[0])
+        for i in range(20):
+          sequence_pam_per_gene_grna[index_in_name_genes_grna_unique, i, one_hot_index(l[2][i])] = 1
+        for i in range(3):
+          sequence_pam_per_gene_grna[index_in_name_genes_grna_unique, 20 + i, one_hot_index(l[3][i])] = 1
+        for i in range(20):
+          for j in range(20):
+            sequence_pam_per_gene_grna_interaction[index_in_name_genes_grna_unique, i, j, one_hot_index(l[2][i]),one_hot_index(l[2][j])] = 1
+
+
+  # Scikit needs only a 2-d matrix as input, so reshape and return
+  #return np.reshape(sequence_pam_per_gene_grna, (len(name_genes_grna_unique), -1)), np.reshape(sequence_pam_per_gene_grna[:, :20, :], (len(name_genes_grna_unique), -1)), np.reshape(sequence_pam_per_gene_grna[:, 20:, :], (len(name_genes_grna_unique), -1))
+  #print np.shape(np.reshape(sequence_pam_per_gene_grna, (len(name_genes_grna_unique), -1)))
+  #print np.shape(np.reshape(sequence_pam_per_gene_grna_interaction, (len(name_genes_grna_unique), -1)))
+
+  #return np.concatenate((np.reshape(sequence_pam_per_gene_grna, (len(name_genes_grna_unique), -1)),np.reshape(sequence_pam_per_gene_grna_interaction, (len(name_genes_grna_unique), -1))),axis=1)
+  return np.reshape(sequence_pam_per_gene_grna_interaction, (len(name_genes_grna_unique), -1))
+  #return np.reshape(sequence_pam_per_gene_grna, (len(name_genes_grna_unique), -1))
+
 def load_gene_sequence_k_mer(sequence_file_name, name_genes_grna_unique, k):
   # Create numpy matrix of size len(name_genes_grna_unique) * 23, to store the sequence first
   sequence_pam_per_gene_grna = np.zeros((len(name_genes_grna_unique), 23), dtype = int)
@@ -109,7 +141,7 @@ def cross_validation_model(sequence_pam_per_gene_grna, count_insertions_gene_grn
   total_deletion_avg_accuracy = []
   ins_coeff = []
   del_coeff = []
-  for repeat in range(2000):
+  for repeat in range(5):
     number_of_splits = 3
     fold_valid = KFold(n_splits = number_of_splits, shuffle = True, random_state = repeat)
     insertion_avg_accuracy = 0.0
@@ -138,9 +170,9 @@ def cross_validation_model(sequence_pam_per_gene_grna, count_insertions_gene_grn
 
 
   print "Average accuracy for insertions predictions is %f" % np.mean(total_insertion_avg_accuracy)
-  print "Variation in accuracy for insertions predictions is %f" % np.var(total_insertion_avg_accuracy)
+  print "Std in accuracy for insertions predictions is %f" % np.std(total_insertion_avg_accuracy)
   print "Average accuracy for deletions predictions is %f" % np.mean(total_deletion_avg_accuracy)
-  print "Variation in accuracy for deletions predictions is %f" % np.var(total_deletion_avg_accuracy)
+  print "Std in accuracy for deletions predictions is %f" % np.std(total_deletion_avg_accuracy)
 
 
 
@@ -148,15 +180,15 @@ def cross_validation_model(sequence_pam_per_gene_grna, count_insertions_gene_grn
   del_coeff = np.array(del_coeff)
   #print "Average coefficients for insertions predictions is "
   #print np.mean(ins_coeff, axis = 0)
-  print "max Variation in coefficients for insertions predictions is "
-  print np.max(np.var(ins_coeff, axis = 0))
+  print "max std in coefficients for insertions predictions is "
+  print np.max(np.std(ins_coeff, axis = 0))
   #print "Average coefficients for deletions predictions is "
   #print np.mean(del_coeff, axis = 0)
-  print "max Variation in coefficients for deletions predictions is "
-  print np.max(np.var(del_coeff, axis = 0))
+  print "max std in coefficients for deletions predictions is "
+  print np.max(np.std(del_coeff, axis = 0))
 
 
-data_folder = "../IndelsFullData/"
+#data_folder = "../IndelsFullData/"
 sequence_file_name = "sequence_pam_gene_grna_big_file.csv"
 #data_folder = "/Users/amirali/Projects/CRISPR-data/R data/AM_TechMerg_Summary/"
 data_folder = "/Users/amirali/Projects/CRISPR-data-Feb18/20nt_counts_only/"
@@ -188,7 +220,8 @@ length_indel = pickle.load(open('storage/length_indel.p', 'rb'))
 count_insertions_gene_grna, count_deletions_gene_grna = compute_summary_statistics(name_genes_grna_unique, name_indel_type_unique, indel_count_matrix, indel_prop_matrix)
 
 
-sequence_pam_per_gene_grna, sequence_per_gene_grna, pam_per_gene_grna = load_gene_sequence(sequence_file_name, name_genes_grna_unique)
+#sequence_pam_per_gene_grna, sequence_per_gene_grna, pam_per_gene_grna = load_gene_sequence(sequence_file_name, name_genes_grna_unique)
+sequence_pam_per_gene_grna = load_gene_sequence_interaction(sequence_file_name, name_genes_grna_unique)
 print "Using both grna sequence and PAM"
 cross_validation_model(sequence_pam_per_gene_grna, count_insertions_gene_grna, count_deletions_gene_grna)
 #print "Using only grna sequence"
