@@ -55,6 +55,7 @@ def load_gene_sequence_interaction(sequence_file_name, name_genes_grna_unique):
           sequence_pam_per_gene_grna[index_in_name_genes_grna_unique, i, one_hot_index(l[2][i])] = 1
         for i in range(3):
           sequence_pam_per_gene_grna[index_in_name_genes_grna_unique, 20 + i, one_hot_index(l[3][i])] = 1
+        # interaction
         for i in range(20):
           for j in range(20):
             sequence_pam_per_gene_grna_interaction[index_in_name_genes_grna_unique, i, j, one_hot_index(l[2][i]),one_hot_index(l[2][j])] = 1
@@ -65,9 +66,12 @@ def load_gene_sequence_interaction(sequence_file_name, name_genes_grna_unique):
   #print np.shape(np.reshape(sequence_pam_per_gene_grna, (len(name_genes_grna_unique), -1)))
   #print np.shape(np.reshape(sequence_pam_per_gene_grna_interaction, (len(name_genes_grna_unique), -1)))
 
-  #return np.concatenate((np.reshape(sequence_pam_per_gene_grna, (len(name_genes_grna_unique), -1)),np.reshape(sequence_pam_per_gene_grna_interaction, (len(name_genes_grna_unique), -1))),axis=1)
-  return np.reshape(sequence_pam_per_gene_grna_interaction, (len(name_genes_grna_unique), -1))
-  #return np.reshape(sequence_pam_per_gene_grna, (len(name_genes_grna_unique), -1))
+  ### linear + interaction
+  return np.concatenate((np.reshape(sequence_pam_per_gene_grna, (len(name_genes_grna_unique), -1)),np.reshape(sequence_pam_per_gene_grna_interaction, (len(name_genes_grna_unique), -1))),axis=1)
+  ### interaction
+  # return np.reshape(sequence_pam_per_gene_grna_interaction, (len(name_genes_grna_unique), -1))
+  ### linear
+  # return np.reshape(sequence_pam_per_gene_grna, (len(name_genes_grna_unique), -1))
 
 def load_gene_sequence_k_mer(sequence_file_name, name_genes_grna_unique, k):
   # Create numpy matrix of size len(name_genes_grna_unique) * 23, to store the sequence first
@@ -97,7 +101,7 @@ def load_gene_sequence_k_mer(sequence_file_name, name_genes_grna_unique, k):
 
 
 def perform_logistic_regression(sequence_pam_per_gene_grna, count_insertions_gene_grna_binary, count_deletions_gene_grna_binary, train_index, test_index, ins_coeff, del_coeff, to_plot = False):
-  log_reg = linear_model.LogisticRegression(C=1000)
+  log_reg = linear_model.LogisticRegression(C=100)
   #print "----"
   #print "Number of positive testing samples in insertions is %f" % np.sum(count_insertions_gene_grna_binary[test_index])
   #print "Total number of testing samples %f" % np.size(test_index)
@@ -109,10 +113,12 @@ def perform_logistic_regression(sequence_pam_per_gene_grna, count_insertions_gen
   insertions_accuracy = metrics.accuracy_score(count_insertions_gene_grna_binary[test_index], log_reg_pred)
   ins_coeff.append(log_reg.coef_[0, :])
   if to_plot:
-    plt.plot(log_reg.coef_[0, :])
+    plt.plot(log_reg.coef_[0, 0:92])
     plt.savefig('ins_log_coeff.pdf')
     plt.clf()
-    plot_seq_logo(log_reg.coef_[0, :], "Insertion_logistic")
+    plot_seq_logo(log_reg.coef_[0, 0:92], "Insertion_logistic")
+    print log_reg.coef_[0, 92:]
+
   #print "Test accuracy score for insertions: %f" % insertions_accuracy
   #print "Train accuracy score for insertions: %f" % metrics.accuracy_score(count_insertions_gene_grna_binary[train_index], log_reg_pred_train)
   #print "----"
@@ -126,10 +132,10 @@ def perform_logistic_regression(sequence_pam_per_gene_grna, count_insertions_gen
   deletions_accuracy = metrics.accuracy_score(count_deletions_gene_grna_binary[test_index], log_reg_pred)
   del_coeff.append(log_reg.coef_[0, :])
   if to_plot:
-    plt.plot(log_reg.coef_[0, :])
+    plt.plot(log_reg.coef_[0, 0:92])
     plt.savefig('del_log_coeff.pdf')
     plt.clf()
-    plot_seq_logo(log_reg.coef_[0, :], "Deletion_logistic")
+    plot_seq_logo(log_reg.coef_[0, 0:92], "Deletion_logistic")
   #print log_reg_pred
   #print "Test accuracy score for deletions: %f" % deletions_accuracy
   #print "Train accuracy score for deletions: %f" % metrics.accuracy_score(count_deletions_gene_grna_binary[train_index], log_reg_pred_train)
@@ -141,7 +147,7 @@ def cross_validation_model(sequence_pam_per_gene_grna, count_insertions_gene_grn
   total_deletion_avg_accuracy = []
   ins_coeff = []
   del_coeff = []
-  for repeat in range(5):
+  for repeat in range(4):
     number_of_splits = 3
     fold_valid = KFold(n_splits = number_of_splits, shuffle = True, random_state = repeat)
     insertion_avg_accuracy = 0.0
@@ -222,6 +228,7 @@ count_insertions_gene_grna, count_deletions_gene_grna = compute_summary_statisti
 
 #sequence_pam_per_gene_grna, sequence_per_gene_grna, pam_per_gene_grna = load_gene_sequence(sequence_file_name, name_genes_grna_unique)
 sequence_pam_per_gene_grna = load_gene_sequence_interaction(sequence_file_name, name_genes_grna_unique)
+print np.shape(sequence_pam_per_gene_grna)
 print "Using both grna sequence and PAM"
 cross_validation_model(sequence_pam_per_gene_grna, count_insertions_gene_grna, count_deletions_gene_grna)
 #print "Using only grna sequence"
