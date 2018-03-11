@@ -67,7 +67,7 @@ def load_gene_sequence(sequence_file_name, name_genes_grna_unique):
 def load_gene_sequence_interaction(sequence_file_name, name_genes_grna_unique):
   # Create numpy matrix of size len(name_genes_grna_unique) * 23, to store the sequence as one-hot encoded
   sequence_pam_per_gene_grna = np.zeros((len(name_genes_grna_unique), 23, 4), dtype = bool)
-  sequence_pam_per_gene_grna_interaction = np.zeros((len(name_genes_grna_unique), 20, 20, 4, 4), dtype=bool) # 15 to 20
+  sequence_pam_per_gene_grna_interaction = np.zeros((len(name_genes_grna_unique), 20*(20-1)/2, 4, 4), dtype=bool) # 15 to 20
   # Obtain the grna and PAM sequence corresponding to name_genes_grna_unique
   with open(sequence_file_name) as f:
     for line in f:
@@ -81,19 +81,22 @@ def load_gene_sequence_interaction(sequence_file_name, name_genes_grna_unique):
           sequence_pam_per_gene_grna[index_in_name_genes_grna_unique, i, one_hot_index(l[2][i])] = 1
         for i in range(3):
           sequence_pam_per_gene_grna[index_in_name_genes_grna_unique, 20 + i, one_hot_index(l[3][i])] = 1
-        # interaction
+        # interaction term
+        ij_counter = 0
         for i in range(20):
-          for j in range(20):
-            sequence_pam_per_gene_grna_interaction[index_in_name_genes_grna_unique, i, j, one_hot_index(l[2][i]),one_hot_index(l[2][j])] = 1
-
+          for j in range(i+1,20):
+            sequence_pam_per_gene_grna_interaction[index_in_name_genes_grna_unique,ij_counter, one_hot_index(l[2][i]),one_hot_index(l[2][j])] = 1
+            ij_counter = ij_counter + 1
 
   # Scikit needs only a 2-d matrix as input, so reshape and return
   #return np.reshape(sequence_pam_per_gene_grna, (len(name_genes_grna_unique), -1)), np.reshape(sequence_pam_per_gene_grna[:, :20, :], (len(name_genes_grna_unique), -1)), np.reshape(sequence_pam_per_gene_grna[:, 20:, :], (len(name_genes_grna_unique), -1))
   #print np.shape(np.reshape(sequence_pam_per_gene_grna, (len(name_genes_grna_unique), -1)))
   #print np.shape(np.reshape(sequence_pam_per_gene_grna_interaction, (len(name_genes_grna_unique), -1)))
 
-  ### linear + interaction
+  ### plot the input logo
   plot_seq_logo(np.mean(sequence_pam_per_gene_grna, axis=0), "input_spacer")
+
+  ### linear + interaction
   return np.concatenate((np.reshape(sequence_pam_per_gene_grna, (len(name_genes_grna_unique), -1)),np.reshape(sequence_pam_per_gene_grna_interaction, (len(name_genes_grna_unique), -1))),axis=1)
   ### interaction
   # return np.reshape(sequence_pam_per_gene_grna_interaction, (len(name_genes_grna_unique), -1))
@@ -128,7 +131,7 @@ def load_gene_sequence_k_mer(sequence_file_name, name_genes_grna_unique, k):
 
 
 def perform_logistic_regression(sequence_pam_per_gene_grna, count_insertions_gene_grna_binary, count_deletions_gene_grna_binary, train_index, test_index, ins_coeff, del_coeff, to_plot = False):
-  log_reg = linear_model.LogisticRegression(penalty='l2', C=2)
+  log_reg = linear_model.LogisticRegression(penalty='l2', C=10)
   #print "----"
   #print "Number of positive testing samples in insertions is %f" % np.sum(count_insertions_gene_grna_binary[test_index])
   #print "Total number of testing samples %f" % np.size(test_index)
@@ -144,7 +147,7 @@ def perform_logistic_regression(sequence_pam_per_gene_grna, count_insertions_gen
     plt.savefig('ins_log_coeff.pdf')
     plt.clf()
     plot_seq_logo(log_reg.coef_[0, 0:92], "Insertion_logistic")
-    plot_interaction_network(log_reg.coef_[0, 92:], "Insertion_logistic")
+    #plot_interaction_network(log_reg.coef_[0, 92:], "Insertion_logistic")
 
   #print "Test accuracy score for insertions: %f" % insertions_accuracy
   #print "Train accuracy score for insertions: %f" % metrics.accuracy_score(count_insertions_gene_grna_binary[train_index], log_reg_pred_train)
@@ -163,7 +166,7 @@ def perform_logistic_regression(sequence_pam_per_gene_grna, count_insertions_gen
     plt.savefig('del_log_coeff.pdf')
     plt.clf()
     plot_seq_logo(log_reg.coef_[0, 0:92], "Deletion_logistic")
-    plot_interaction_network(log_reg.coef_[0, 92:], "Deletion_logistic")
+    #plot_interaction_network(log_reg.coef_[0, 92:], "Deletion_logistic")
   #print log_reg_pred
   #print "Test accuracy score for deletions: %f" % deletions_accuracy
   #print "Train accuracy score for deletions: %f" % metrics.accuracy_score(count_deletions_gene_grna_binary[train_index], log_reg_pred_train)
