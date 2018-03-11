@@ -18,17 +18,19 @@ def plot_interaction_network(adj_list, name_val):
   adj_list = adj_list.reshape([20, 20, 4, 4])
   G = nx.Graph()
   G.add_nodes_from(range(1, 21))
-  num_edges = 40
+  num_edges = 20
   adj_sorted = np.sort(np.abs(adj_list), axis = None)
   min_wt = adj_sorted[-num_edges]
+  print "min weight", min_wt
   nucleotide_array = ['A', 'C', 'G', 'T']
   for i1 in range(20):
     for i2 in range(i1, 20):
       for i3 in range(4):
         for i4 in range(4):
-          if(np.abs(adj_list[i1, i2, i3, i4] >= min_wt)):
-            label = nucleotide_array[i3] + nucleotide_array[i4]
+          if(np.abs(adj_list[i1, i2, i3, i4]) >= min_wt):
+            label = nucleotide_array[i3] + nucleotide_array[i4] + "  " + "%.2f" %adj_list[i1, i2, i3, i4]
             G.add_edge(i1+1, i2+1, l = label)
+
   plt.figure()
   nx.draw(G, nx.circular_layout(G), nodelist=G.nodes(), with_labels=True, edge_cmap=plt.cm.Blues, arrows=False)
   nx.draw_networkx_edge_labels(G,pos=nx.circular_layout(G))
@@ -126,7 +128,7 @@ def load_gene_sequence_k_mer(sequence_file_name, name_genes_grna_unique, k):
 
 
 def perform_logistic_regression(sequence_pam_per_gene_grna, count_insertions_gene_grna_binary, count_deletions_gene_grna_binary, train_index, test_index, ins_coeff, del_coeff, to_plot = False):
-  log_reg = linear_model.LogisticRegression(C=100)
+  log_reg = linear_model.LogisticRegression(penalty='l2', C=2)
   #print "----"
   #print "Number of positive testing samples in insertions is %f" % np.sum(count_insertions_gene_grna_binary[test_index])
   #print "Total number of testing samples %f" % np.size(test_index)
@@ -143,7 +145,6 @@ def perform_logistic_regression(sequence_pam_per_gene_grna, count_insertions_gen
     plt.clf()
     plot_seq_logo(log_reg.coef_[0, 0:92], "Insertion_logistic")
     plot_interaction_network(log_reg.coef_[0, 92:], "Insertion_logistic")
-    print log_reg.coef_[0, 92:]
 
   #print "Test accuracy score for insertions: %f" % insertions_accuracy
   #print "Train accuracy score for insertions: %f" % metrics.accuracy_score(count_insertions_gene_grna_binary[train_index], log_reg_pred_train)
@@ -221,10 +222,10 @@ def cross_validation_model(sequence_pam_per_gene_grna, count_insertions_gene_grn
   print np.max(np.std(del_coeff, axis = 0))
 
 
-data_folder = "../IndelsFullData/"
+#data_folder = "../IndelsFullData/"
 sequence_file_name = "sequence_pam_gene_grna_big_file.csv"
 #data_folder = "/Users/amirali/Projects/CRISPR-data/R data/AM_TechMerg_Summary/"
-#data_folder = "/Users/amirali/Projects/CRISPR-data-Feb18/20nt_counts_only/"
+data_folder = "/Users/amirali/Projects/CRISPR-data-Feb18/20nt_counts_only/"
 
 
 #name_genes_unique, name_genes_grna_unique, name_indel_type_unique, indel_count_matrix, indel_prop_matrix, length_indel = preprocess_indel_files(data_folder)
