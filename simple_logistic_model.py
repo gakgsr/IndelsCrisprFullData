@@ -15,25 +15,29 @@ from sequence_logos import plot_seq_logo
 
 
 def plot_interaction_network(adj_list, name_val):
-  adj_list = adj_list.reshape([20, 20, 4, 4])
+  adj_list = adj_list.reshape([190, 4, 4])
   G = nx.Graph()
-  G.add_nodes_from(range(1, 21))
   num_edges = 20
   adj_sorted = np.sort(np.abs(adj_list), axis = None)
   min_wt = adj_sorted[-num_edges]
   print "min weight", min_wt
   nucleotide_array = ['A', 'C', 'G', 'T']
+  ij_counter = 0
   for i1 in range(20):
-    for i2 in range(i1, 20):
+    for i2 in range(i1 + 1, 20):
       for i3 in range(4):
         for i4 in range(4):
-          if(np.abs(adj_list[i1, i2, i3, i4]) >= min_wt):
-            label = nucleotide_array[i3] + nucleotide_array[i4] + "  " + "%.2f" %adj_list[i1, i2, i3, i4]
-            G.add_edge(i1+1, i2+1, l = label)
+          if(np.abs(adj_list[ij_counter, i3, i4]) >= min_wt and adj_list[ij_counter, i3, i4] > 0):
+            G.add_edge(str(i1+1) + nucleotide_array[i3], str(i2+1) + nucleotide_array[i4], w = np.abs(adj_list[ij_counter, i3, i4]), c = 'b')
+          if(np.abs(adj_list[ij_counter, i3, i4]) >= min_wt and adj_list[ij_counter, i3, i4] <= 0):
+            G.add_edge(str(i1+1) + nucleotide_array[i3], str(i2+1) + nucleotide_array[i4], w = np.abs(adj_list[ij_counter, i3, i4]), c = 'g')
+      ij_counter += 1
 
   plt.figure()
-  nx.draw(G, nx.circular_layout(G), nodelist=G.nodes(), with_labels=True, edge_cmap=plt.cm.Blues, arrows=False)
-  nx.draw_networkx_edge_labels(G,pos=nx.circular_layout(G))
+  edges = G.edges()
+  colors = [G[u][v]['c'] for u,v in edges]
+  weights = [G[u][v]['w'] for u,v in edges]
+  nx.draw(G, nx.circular_layout(G), font_size = 10, node_color = 'y', with_labels=True, edges=edges, edge_color=colors, width=weights)
   plt.savefig(name_val + 'interaction_network.pdf')
   plt.clf()
 
@@ -147,7 +151,7 @@ def perform_logistic_regression(sequence_pam_per_gene_grna, count_insertions_gen
     plt.savefig('ins_log_coeff.pdf')
     plt.clf()
     plot_seq_logo(log_reg.coef_[0, 0:92], "Insertion_logistic")
-    #plot_interaction_network(log_reg.coef_[0, 92:], "Insertion_logistic")
+    plot_interaction_network(log_reg.coef_[0, 92:], "Insertion_logistic")
 
   #print "Test accuracy score for insertions: %f" % insertions_accuracy
   #print "Train accuracy score for insertions: %f" % metrics.accuracy_score(count_insertions_gene_grna_binary[train_index], log_reg_pred_train)
@@ -166,7 +170,7 @@ def perform_logistic_regression(sequence_pam_per_gene_grna, count_insertions_gen
     plt.savefig('del_log_coeff.pdf')
     plt.clf()
     plot_seq_logo(log_reg.coef_[0, 0:92], "Deletion_logistic")
-    #plot_interaction_network(log_reg.coef_[0, 92:], "Deletion_logistic")
+    plot_interaction_network(log_reg.coef_[0, 92:], "Deletion_logistic")
   #print log_reg_pred
   #print "Test accuracy score for deletions: %f" % deletions_accuracy
   #print "Train accuracy score for deletions: %f" % metrics.accuracy_score(count_deletions_gene_grna_binary[train_index], log_reg_pred_train)
@@ -225,10 +229,10 @@ def cross_validation_model(sequence_pam_per_gene_grna, count_insertions_gene_grn
   print np.max(np.std(del_coeff, axis = 0))
 
 
-#data_folder = "../IndelsFullData/"
+data_folder = "../IndelsFullData/"
 sequence_file_name = "sequence_pam_gene_grna_big_file.csv"
 #data_folder = "/Users/amirali/Projects/CRISPR-data/R data/AM_TechMerg_Summary/"
-data_folder = "/Users/amirali/Projects/CRISPR-data-Feb18/20nt_counts_only/"
+#data_folder = "/Users/amirali/Projects/CRISPR-data-Feb18/20nt_counts_only/"
 
 
 #name_genes_unique, name_genes_grna_unique, name_indel_type_unique, indel_count_matrix, indel_prop_matrix, length_indel = preprocess_indel_files(data_folder)
