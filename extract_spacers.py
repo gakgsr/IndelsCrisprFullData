@@ -4,9 +4,10 @@ import openpyxl
 import xlrd
 
 count_data_folder = '/Users/amirali/Projects/CRISPR-data-Feb18/20nt_counts_only/counts/'
-helper_sheet = '/Users/amirali/Projects/CRISPR-data-Feb18/MasterWellsFIN.xlsx'
+#helper_sheet = '/Users/amirali/Projects/CRISPR-data-Feb18/MasterWellsFIN.xlsx'
+helper_sheet = '/Users/amirali/Projects/CRISPR-data-Feb18/MasterWells_AM_Donor.xlsx'
 
-writefile = open('sequence_pam_gene_grna_big_file.csv','w')
+writefile = open('sequence_pam_gene_grna_big_file_donor.csv','w')
 
 book = openpyxl.load_workbook(helper_sheet)
 sheet = book.active
@@ -31,6 +32,8 @@ for each_file in glob.glob(count_data_folder + "counts-*.txt"):
         #print a
         #print all_exps.index(a)
         guide,well= str(sheet['E%d'% (all_exps.index(a)+2)].value).split('_')
+        doner_id = str(sheet['H%s'% (all_exps.index(a)+2)].value)
+        #print doner_id
         #print "guide", guide
         #print "well", well
         workbook = xlrd.open_workbook('/Users/amirali/Projects/CRISPR-data/Plate Maps/cr%d.xls' %int(guide))
@@ -40,6 +43,6 @@ for each_file in glob.glob(count_data_folder + "counts-*.txt"):
         spacer_list = worksheet.col_values(5)
         pam_list = worksheet.col_values(6)
         #print a,curr_gene_name,spacer_list[well_list.index(well)],pam_list[well_list.index(well)]
-        writefile.write('%s,%s,%s,%s\n' %(a,curr_gene_name,spacer_list[well_list.index(well)],pam_list[well_list.index(well)]))
+        writefile.write('%s,%s,%s,%s,%s\n' %(a,curr_gene_name,spacer_list[well_list.index(well)],pam_list[well_list.index(well)],doner_id))
 
 
