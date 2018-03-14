@@ -18,17 +18,20 @@ from sklearn.metrics import jaccard_similarity_score
 def jaccard_distance(set1,set2):
   return 1 - len(list(set(set1) & set(set2))) / len(list(set(set1) | set(set2)))
 
-def variation_patients_and_lump(indel_count_matrix,sequence_file_name):
+def variation_patients_and_lump(indel_count_matrix,sequence_file_name, name_genes_grna_unique):
   topk = 20
   num_indel, num_crispr = np.shape(indel_count_matrix)
   indel_set_matrix = np.zeros((topk,num_crispr))
   for crispr in range(num_crispr):
     indel_set_matrix[:,crispr] = np.argsort(indel_count_matrix[:, crispr])[-topk:]
 
+  map1 = {}
+  for i in range(len(name_genes_grna_unique)):
+    gene_grna_name = name_genes_grna_unique[i].split('-')
+    map1['gene_grna_name'] = i
 
-  # add this to preprocess indel files
-  # ********
   all_sites = []
+  map2 = {}
   with open(sequence_file_name) as f:
     for line in f:
       line = line.replace('"', '')
@@ -36,13 +39,22 @@ def variation_patients_and_lump(indel_count_matrix,sequence_file_name):
       line = line.replace('\n', '')
       l = line.split(',')
       all_sites.append(l[4])
+      map2[l[0]] = l[4]
   # ********
+  all_sites = list(set(all_sites))
+  site_map = np.zeros(len(name_genes_grna_unique)) - 1
+  for i in range(len(name_genes_grna_unique)):
+    gene_grna_name = name_genes_grna_unique[i].split('-')
+    if map2.get(gene_grna_name[1] + '-' + gene_grna_name[2]) != None:
+      site_map[i] = all_sites.index(map2[gene_grna_name[1] + '-' + gene_grna_name[2]])
+    else:
+      print "Some keys missing"
 
 
   #print np.sort(all_sites)
   #print np.asarray(np.argsort(all_sites))
 
-  indel_set_matrix = indel_set_matrix[:,np.asarray(np.argsort(all_sites))]
+  indel_set_matrix = indel_set_matrix[:,np.asarray(np.argsort(site_map))]
 
   #jaccard_matrix = np.zeros((num_crispr,num_crispr))
   jaccard_matrix = np.zeros((100, 100))
@@ -298,7 +310,7 @@ print "loading length_indel ..."
 length_indel = pickle.load(open('storage/length_indel.p', 'rb'))
 
 
-indel_set_matrix,jaccard_matrix = variation_patients_and_lump(indel_count_matrix,sequence_file_name)
+indel_set_matrix,jaccard_matrix = variation_patients_and_lump(indel_count_matrix,sequence_file_name, name_genes_grna_unique)
 plt.imshow(jaccard_matrix, cmap='hot', interpolation='nearest')
 plt.savefig('jaccard.pdf')
 plt.clf()
