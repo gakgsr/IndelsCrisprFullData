@@ -12,6 +12,45 @@ import time
 import pickle
 import networkx as nx
 from sequence_logos import plot_seq_logo
+from sklearn.metrics import jaccard_similarity_score
+
+
+def jaccard_distance(set1,set2):
+  return 1 - len(list(set(set1) & set(set2))) / len(list(set(set1) | set(set2)))
+
+def variation_patients_and_lump(indel_count_matrix,sequence_file_name):
+  topk = 20
+  num_indel, num_crispr = np.shape(indel_count_matrix)
+  indel_set_matrix = np.zeros((topk,num_crispr))
+  for crispr in range(num_crispr):
+    indel_set_matrix[:,crispr] = np.argsort(indel_count_matrix[:, crispr])[-topk:]
+
+
+  # add this to preprocess indel files
+  # ********
+  all_sites = []
+  with open(sequence_file_name) as f:
+    for line in f:
+      line = line.replace('"', '')
+      line = line.replace(' ', '')
+      line = line.replace('\n', '')
+      l = line.split(',')
+      all_sites.append(l[4])
+  # ********
+
+
+  #print np.sort(all_sites)
+  #print np.asarray(np.argsort(all_sites))
+
+  indel_set_matrix = indel_set_matrix[:,np.asarray(np.argsort(all_sites))]
+
+  #jaccard_matrix = np.zeros((num_crispr,num_crispr))
+  jaccard_matrix = np.zeros((100, 100))
+  for crispr1 in range(100):
+    for crispr2 in range(100):
+      jaccard_matrix[crispr1,crispr2] = jaccard_distance(indel_set_matrix[:,crispr1],indel_set_matrix[:,crispr2])
+
+  return indel_set_matrix,jaccard_matrix
 
 
 def plot_interaction_network(adj_list, name_val):
@@ -217,7 +256,6 @@ def cross_validation_model(sequence_pam_per_gene_grna, count_insertions_gene_grn
   print "Std in accuracy for deletions predictions is %f" % np.std(total_deletion_avg_accuracy)
 
 
-
   ins_coeff = np.array(ins_coeff)
   del_coeff = np.array(del_coeff)
   #print "Average coefficients for insertions predictions is "
@@ -237,6 +275,7 @@ sequence_file_name = "sequence_pam_gene_grna_big_file_donor.csv"
 
 
 #name_genes_unique, name_genes_grna_unique, name_indel_type_unique, indel_count_matrix, indel_prop_matrix, length_indel = preprocess_indel_files(data_folder)
+
 #pickle.dump(name_genes_unique, open('storage/name_genes_unique.p', 'wb'))
 #pickle.dump(name_genes_grna_unique, open('storage/name_genes_grna_unique.p', 'wb'))
 #pickle.dump(name_indel_type_unique, open('storage/name_indel_type_unique.p', 'wb'))
@@ -259,14 +298,20 @@ print "loading length_indel ..."
 length_indel = pickle.load(open('storage/length_indel.p', 'rb'))
 
 
-count_insertions_gene_grna, count_deletions_gene_grna = compute_summary_statistics(name_genes_grna_unique, name_indel_type_unique, indel_count_matrix, indel_prop_matrix)
+indel_set_matrix,jaccard_matrix = variation_patients_and_lump(indel_count_matrix,sequence_file_name)
+plt.imshow(jaccard_matrix, cmap='hot', interpolation='nearest')
+plt.savefig('jaccard.pdf')
+plt.clf()
 
+
+
+#count_insertions_gene_grna, count_deletions_gene_grna = compute_summary_statistics(name_genes_grna_unique, name_indel_type_unique, indel_count_matrix, indel_prop_matrix)
 
 #sequence_pam_per_gene_grna, sequence_per_gene_grna, pam_per_gene_grna = load_gene_sequence(sequence_file_name, name_genes_grna_unique)
-sequence_pam_per_gene_grna = load_gene_sequence_interaction(sequence_file_name, name_genes_grna_unique)
-print np.shape(sequence_pam_per_gene_grna)
-print "Using both grna sequence and PAM"
-cross_validation_model(sequence_pam_per_gene_grna, count_insertions_gene_grna, count_deletions_gene_grna)
+#sequence_pam_per_gene_grna = load_gene_sequence_interaction(sequence_file_name, name_genes_grna_unique)
+#print np.shape(sequence_pam_per_gene_grna)
+#print "Using both grna sequence and PAM"
+#cross_validation_model(sequence_pam_per_gene_grna, count_insertions_gene_grna, count_deletions_gene_grna)
 #print "Using only grna sequence"
 #cross_validation_model(sequence_per_gene_grna, count_insertions_gene_grna, count_deletions_gene_grna)
 #print "Using only PAM"

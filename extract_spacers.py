@@ -2,6 +2,8 @@ import numpy as np
 import glob
 import openpyxl
 import xlrd
+import warnings
+warnings.filterwarnings("ignore")
 
 count_data_folder = '/Users/amirali/Projects/CRISPR-data-Feb18/20nt_counts_only/counts/'
 #helper_sheet = '/Users/amirali/Projects/CRISPR-data-Feb18/MasterWellsFIN.xlsx'
@@ -12,6 +14,7 @@ writefile = open('sequence_pam_gene_grna_big_file_donor.csv','w')
 book = openpyxl.load_workbook(helper_sheet)
 sheet = book.active
 all_exps=[]
+all_locations = []
 for row in range(2, 6147):
     cell_value = str(sheet['A%d'%row].value)
     cell_value = cell_value.replace('_','-')[6:]
@@ -42,7 +45,11 @@ for each_file in glob.glob(count_data_folder + "counts-*.txt"):
         well_list = worksheet.col_values(1)
         spacer_list = worksheet.col_values(5)
         pam_list = worksheet.col_values(6)
+        location_list = worksheet.col_values(7)
+        #all_locations.append(location_list[well_list.index(well)][5:])
         #print a,curr_gene_name,spacer_list[well_list.index(well)],pam_list[well_list.index(well)]
-        writefile.write('%s,%s,%s,%s,%s\n' %(a,curr_gene_name,spacer_list[well_list.index(well)],pam_list[well_list.index(well)],doner_id))
+        writefile.write('%s,%s,%s,%s,%s,%s\n' %(a,curr_gene_name,spacer_list[well_list.index(well)],pam_list[well_list.index(well)],location_list[well_list.index(well)][5:],doner_id))
 
 
+#print "number of sites", np.shape(all_locations)
+#print "number of unique sites", len(set(all_locations))
