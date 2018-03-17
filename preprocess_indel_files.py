@@ -103,11 +103,9 @@ def preprocess_indel_files(data_folder):
 
         i += 1
 
-
   # finding the index for the indels with frequency of mutatnt reads < 0.01
   rare_indel_index = []
   indel_frac_mutant_read_matrix = indel_count_matrix / np.reshape(np.sum(indel_count_matrix, axis=0), (1, -1))
-  print np.shape(indel_frac_mutant_read_matrix)
   for row_index in range(np.shape(indel_frac_mutant_read_matrix)[0]):
     if max(indel_frac_mutant_read_matrix[row_index]) < 0.01:
       rare_indel_index.append(row_index)
@@ -162,6 +160,22 @@ def preprocess_indel_files(data_folder):
   indel_prop_matrix = np.delete(indel_prop_matrix, rare_indel_index, 0)
   length_indel = np.delete(length_indel, rare_indel_index, 0)
   ######
+
+
+  ######
+  ###### here we filter out all outcomes with very small read counts
+  ######
+  low_read_index = []
+  low_read_patients = ['HSPH1-00018-J05', 'HAT1-00022-O21', 'ATP5D-00029-A17' , 'XPO5-00029-E01' , 'PON2-00019-K20']
+  for crispr in range(np.shape(indel_count_matrix)[1]):
+    if sum(indel_count_matrix[:,crispr]) < 1000 or (name_genes_grna_unique[crispr] in low_read_patients):
+      low_read_index.append(crispr)
+
+  indel_count_matrix = np.delete(indel_count_matrix, low_read_index, 1)
+  indel_prop_matrix = np.delete(indel_prop_matrix, low_read_index, 1)
+  name_genes_grna_unique = list(np.delete(name_genes_grna_unique, low_read_index, 0))
+  ######
+
 
 
   # Save the indel counts, indel type, and gene-grna name information

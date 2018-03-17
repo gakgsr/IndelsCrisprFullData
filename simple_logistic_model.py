@@ -13,10 +13,14 @@ import pickle
 import networkx as nx
 from sequence_logos import plot_seq_logo
 from sklearn.metrics import jaccard_similarity_score
-
+import collections
+from operator import itemgetter
+from sklearn.cluster import AffinityPropagation
+from sklearn.cluster import KMeans
+from sklearn.metrics.cluster import adjusted_rand_score
 
 def jaccard_distance(set1,set2):
-  return 1 - len(list(set(set1) & set(set2))) / len(list(set(set1) | set(set2)))
+  return 1 - float(len(list(set(set1) & set(set2)))) / len(list(set(set1) | set(set2)))
 
 def variation_patients_and_lump(indel_count_matrix,sequence_file_name, name_genes_grna_unique):
   topk = 20
@@ -24,11 +28,6 @@ def variation_patients_and_lump(indel_count_matrix,sequence_file_name, name_gene
   indel_set_matrix = np.zeros((topk,num_crispr))
   for crispr in range(num_crispr):
     indel_set_matrix[:,crispr] = np.argsort(indel_count_matrix[:, crispr])[-topk:]
-
-  map1 = {}
-  for i in range(len(name_genes_grna_unique)):
-    gene_grna_name = name_genes_grna_unique[i].split('-')
-    map1['gene_grna_name'] = i
 
   all_sites = []
   map2 = {}
@@ -51,24 +50,82 @@ def variation_patients_and_lump(indel_count_matrix,sequence_file_name, name_gene
       print "Some keys missing"
 
 
-  #print np.sort(all_sites)
-  #print np.asarray(np.argsort(all_sites))
+
+  howmanytoshow = num_crispr
+  #howmanytoshow = 100
 
   indel_set_matrix = indel_set_matrix[:,np.asarray(np.argsort(site_map))]
+  site_counter_list_Counter = collections.Counter(np.asarray(np.sort(site_map)))
+  site_counter_list = site_counter_list_Counter.values()
+
+  name_genes_grna_unique_sorted = np.copy(name_genes_grna_unique)
+  name_genes_grna_unique_sorted = name_genes_grna_unique_sorted[np.asarray(np.argsort(site_map))]
 
   #jaccard_matrix = np.zeros((num_crispr,num_crispr))
-  jaccard_matrix = np.zeros((100, 100))
-  for crispr1 in range(100):
-    for crispr2 in range(100):
+  jaccard_matrix = np.zeros((howmanytoshow, howmanytoshow))
+  for crispr1 in range(howmanytoshow):
+    for crispr2 in range(howmanytoshow):
       jaccard_matrix[crispr1,crispr2] = jaccard_distance(indel_set_matrix[:,crispr1],indel_set_matrix[:,crispr2])
 
-  return indel_set_matrix,jaccard_matrix
+  unique_patient_per_site_index_list = []
+  indel_count_matrix_sum = indel_count_matrix.sum(axis=0)
+  for site_counter in range(np.size(site_counter_list)):
+    indexxx = np.argmax(indel_count_matrix_sum[range(sum(site_counter_list[0:site_counter]),sum(site_counter_list[0:site_counter])+site_counter_list[site_counter])])
+    unique_patient_per_site_index_list.append(indexxx+sum(site_counter_list[0:site_counter]))
+
+  #af = AffinityPropagation().fit(jaccard_matrix)
+  #cluster_centers_indices = af.cluster_centers_indices_
+  #labels = af.labels_
+  #n_clusters_ = len(cluster_centers_indices)
+
+  kmeans = KMeans(n_clusters=np.size(site_counter_list), init='k-means++', random_state=0).fit(jaccard_matrix)
+  labels = kmeans.labels_
+  ARI = adjusted_rand_score(list(labels), list(np.sort(site_map)))
+  print "ARI = ", ARI
+
+  # # this is to find the inner and outer distance variations
+  # iner_distances = []
+  # all_distances = []
+  # for site_counter in range(np.size(site_counter_list)):
+  #   for i in range(site_counter_list[site_counter]):
+  #     for j in range(i+1,site_counter_list[site_counter]):
+  #       new_jaccard = jaccard_matrix[sum(site_counter_list[0:site_counter])+i ,sum(site_counter_list[0:site_counter])+j]
+  #       iner_distances.append(new_jaccard)
+  #       #if new_jaccard > 0.8:
+  #       #  print name_genes_grna_unique_sorted[sum(site_counter_list[0:site_counter])+i],name_genes_grna_unique_sorted[sum(site_counter_list[0:site_counter])+j]
+  # print "inner jaccard distance mean", np.mean(iner_distances)
+  # print "inner jaccard distance std", np.std(iner_distances)
+  # for i in range(num_crispr):
+  #   for j in range(i+1,num_crispr):
+  #     all_distances.append(jaccard_matrix[i,j])
+  # print "all jaccard distance mean", np.mean(all_distances)
+  # print "all jaccard distance std", np.std(all_distances)
+
+
+  # # this is to plot the jaccard distance matrix
+  # plt.imshow(jaccard_matrix, cmap='hot', interpolation='nearest')
+  # plt.colorbar()
+  # ax = plt.gca()
+  # ax.set_xticklabels([])
+  # ax.set_yticklabels([])
+  # #ax.set_xticks(np.arange(0, howmanytoshow, 1))
+  # #ax.set_yticks(np.arange(0, howmanytoshow, 1))
+  # #ax.set_xticklabels(map(int, np.sort(site_map)[0:howmanytoshow]))
+  # #ax.set_yticklabels(map(int, np.sort(site_map)[0:howmanytoshow]))
+  # #ax.set_xticklabels(itemgetter(*map(int, np.sort(site_map)[0:howmanytoshow]))(all_sites))
+  # #ax.set_yticklabels(itemgetter(*map(int, np.sort(site_map)[0:howmanytoshow]))(all_sites))
+  # plt.ylabel('Cut-site Index')
+  # plt.xlabel('Cut-site Index')
+  # plt.savefig('jaccard.pdf')
+  # plt.clf()
+
+  return indel_set_matrix,jaccard_matrix,unique_patient_per_site_index_list
 
 
 def plot_interaction_network(adj_list, name_val):
   adj_list = adj_list.reshape([190, 4, 4])
   G = nx.Graph()
-  num_edges = 10
+  num_edges = 15
   adj_sorted = np.sort(np.abs(adj_list), axis = None)
   min_wt = adj_sorted[-num_edges]
   print "min weight",name_val, min_wt
@@ -198,9 +255,9 @@ def perform_logistic_regression(sequence_pam_per_gene_grna, count_insertions_gen
   insertions_accuracy = metrics.accuracy_score(count_insertions_gene_grna_binary[test_index], log_reg_pred)
   ins_coeff.append(log_reg.coef_[0, :])
   if to_plot:
-    plt.plot(log_reg.coef_[0, 0:92])
-    plt.savefig('ins_log_coeff.pdf')
-    plt.clf()
+    #plt.plot(log_reg.coef_[0, 0:92])
+    #plt.savefig('ins_log_coeff.pdf')
+    #plt.clf()
     plot_seq_logo(log_reg.coef_[0, 0:92], "Insertion_logistic")
     plot_interaction_network(log_reg.coef_[0, 92:], "Insertion_logistic")
 
@@ -217,9 +274,9 @@ def perform_logistic_regression(sequence_pam_per_gene_grna, count_insertions_gen
   deletions_accuracy = metrics.accuracy_score(count_deletions_gene_grna_binary[test_index], log_reg_pred)
   del_coeff.append(log_reg.coef_[0, :])
   if to_plot:
-    plt.plot(log_reg.coef_[0, 0:92])
-    plt.savefig('del_log_coeff.pdf')
-    plt.clf()
+    #plt.plot(log_reg.coef_[0, 0:92])
+    #plt.savefig('del_log_coeff.pdf')
+    #plt.clf()
     plot_seq_logo(log_reg.coef_[0, 0:92], "Deletion_logistic")
     plot_interaction_network(log_reg.coef_[0, 92:], "Deletion_logistic")
   #print log_reg_pred
@@ -233,8 +290,8 @@ def cross_validation_model(sequence_pam_per_gene_grna, count_insertions_gene_grn
   total_deletion_avg_accuracy = []
   ins_coeff = []
   del_coeff = []
-  for repeat in range(5):
-    #print "repeat ", repeat
+  for repeat in range(50):
+    print "repeat ", repeat
     number_of_splits = 3
     fold_valid = KFold(n_splits = number_of_splits, shuffle = True, random_state = repeat)
     insertion_avg_accuracy = 0.0
@@ -283,52 +340,65 @@ def cross_validation_model(sequence_pam_per_gene_grna, count_insertions_gene_grn
 data_folder = "../IndelsFullData/"
 sequence_file_name = "sequence_pam_gene_grna_big_file_donor.csv"
 #data_folder = "/Users/amirali/Projects/CRISPR-data/R data/AM_TechMerg_Summary/"
-#data_folder = "/Users/amirali/Projects/CRISPR-data-Feb18/20nt_counts_only/"
+data_folder = "/Users/amirali/Projects/CRISPR-data-Feb18/20nt_counts_only/"
 
+# name_genes_unique, name_genes_grna_unique, name_indel_type_unique, indel_count_matrix, indel_prop_matrix, length_indel = preprocess_indel_files(data_folder)
+# print "name_genes_unique"
+# print np.shape(name_genes_unique)
+# print "name_genes_grna_unique"
+# print np.shape(name_genes_grna_unique)
+# print "name_indel_type_unique"
+# print np.shape(name_indel_type_unique)
+# print "indel_count_matrix"
+# print np.shape(indel_count_matrix)
+# print "indel_prop_matrix"
+# print np.shape(indel_prop_matrix)
+# print "length_indel"
+# print np.shape(length_indel)
+# pickle.dump(name_genes_unique, open('storage/name_genes_unique.p', 'wb'))
+# pickle.dump(name_genes_grna_unique, open('storage/name_genes_grna_unique.p', 'wb'))
+# pickle.dump(name_indel_type_unique, open('storage/name_indel_type_unique.p', 'wb'))
+# pickle.dump(indel_count_matrix, open('storage/indel_count_matrix.p', 'wb'))
+# pickle.dump(indel_prop_matrix, open('storage/indel_prop_matrix.p', 'wb'))
+# pickle.dump(length_indel, open('storage/length_indel.p', 'wb'))
 
-#name_genes_unique, name_genes_grna_unique, name_indel_type_unique, indel_count_matrix, indel_prop_matrix, length_indel = preprocess_indel_files(data_folder)
-
-#pickle.dump(name_genes_unique, open('storage/name_genes_unique.p', 'wb'))
-#pickle.dump(name_genes_grna_unique, open('storage/name_genes_grna_unique.p', 'wb'))
-#pickle.dump(name_indel_type_unique, open('storage/name_indel_type_unique.p', 'wb'))
-#pickle.dump(indel_count_matrix, open('storage/indel_count_matrix.p', 'wb'))
-#pickle.dump(indel_prop_matrix, open('storage/indel_prop_matrix.p', 'wb'))
-#pickle.dump(length_indel, open('storage/length_indel.p', 'wb'))
-
-
-print "loading name_genes_unique ..."
-name_genes_unique = pickle.load(open('storage/name_genes_unique.p', 'rb'))
 print "loading name_genes_grna_unique ..."
+#name_genes_grna_unique = pickle.load(open('storage/name_genes_grna_unique_one_patient_per_site.p', 'rb'))
 name_genes_grna_unique = pickle.load(open('storage/name_genes_grna_unique.p', 'rb'))
 print "loading name_indel_type_unique ..."
 name_indel_type_unique = pickle.load(open('storage/name_indel_type_unique.p', 'rb'))
 print "loading indel_count_matrix ..."
+#indel_count_matrix = pickle.load(open('storage/indel_count_matrix_one_patient_per_site.p', 'rb'))
 indel_count_matrix = pickle.load(open('storage/indel_count_matrix.p', 'rb'))
 print "loading indel_prop_matrix ..."
+#indel_prop_matrix = pickle.load(open('storage/indel_prop_matrix_one_patient_per_site.p', 'rb'))
 indel_prop_matrix = pickle.load(open('storage/indel_prop_matrix.p', 'rb'))
 print "loading length_indel ..."
 length_indel = pickle.load(open('storage/length_indel.p', 'rb'))
 
 
-indel_set_matrix,jaccard_matrix = variation_patients_and_lump(indel_count_matrix,sequence_file_name, name_genes_grna_unique)
-plt.imshow(jaccard_matrix, cmap='hot', interpolation='nearest')
-plt.savefig('jaccard.pdf')
-plt.clf()
-
+indel_set_matrix,jaccard_matrix,unique_patient_per_site_index_list = variation_patients_and_lump(indel_count_matrix,sequence_file_name, name_genes_grna_unique)
+# indel_count_matrix = np.delete(indel_count_matrix, unique_patient_per_site_index_list, 1)
+# indel_prop_matrix = np.delete(indel_prop_matrix, unique_patient_per_site_index_list, 1)
+# name_genes_grna_unique = list(np.delete(name_genes_grna_unique, unique_patient_per_site_index_list, 0))
+# pickle.dump(name_genes_grna_unique, open('storage/name_genes_grna_unique_one_patient_per_site.p', 'wb'))
+# pickle.dump(indel_count_matrix, open('storage/indel_count_matrix_one_patient_per_site.p', 'wb'))
+# pickle.dump(indel_prop_matrix, open('storage/indel_prop_matrix_one_patient_per_site.p', 'wb'))
 
 
 #count_insertions_gene_grna, count_deletions_gene_grna = compute_summary_statistics(name_genes_grna_unique, name_indel_type_unique, indel_count_matrix, indel_prop_matrix)
 
 #sequence_pam_per_gene_grna, sequence_per_gene_grna, pam_per_gene_grna = load_gene_sequence(sequence_file_name, name_genes_grna_unique)
 #sequence_pam_per_gene_grna = load_gene_sequence_interaction(sequence_file_name, name_genes_grna_unique)
-#print np.shape(sequence_pam_per_gene_grna)
-#print "Using both grna sequence and PAM"
+
+
+#print "Using both Spacer and PAM"
 #cross_validation_model(sequence_pam_per_gene_grna, count_insertions_gene_grna, count_deletions_gene_grna)
-#print "Using only grna sequence"
+#print "Using only Spacer"
 #cross_validation_model(sequence_per_gene_grna, count_insertions_gene_grna, count_deletions_gene_grna)
 #print "Using only PAM"
 #cross_validation_model(pam_per_gene_grna, count_insertions_gene_grna, count_deletions_gene_grna)
-#print "Using Kmers"
-#k_mer_list = load_gene_sequence_k_mer(sequence_file_name, name_genes_grna_unique, 1)
+#print "Using Kmers of Spacer + PAM"
+#k_mer_list = load_gene_sequence_k_mer(sequence_file_name, name_genes_grna_unique, 3)
 #cross_validation_model(k_mer_list, count_insertions_gene_grna, count_deletions_gene_grna)
 

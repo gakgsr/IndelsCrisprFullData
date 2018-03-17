@@ -89,9 +89,9 @@ def compute_summary_statistics(name_genes_grna_unique, name_indel_type_unique, i
       ins_location[i, :] = 1
     if name_indel_type_unique[i].find('D') != -1:
       del_locaion[i, :] = 1
-  threshold_ins = 0.115
+  threshold_ins = 0.118
   indel_count_matrix_threshold[np.logical_and(indel_count_matrix_threshold <= threshold_ins, ins_location)] = 0.0
-  threshold_del = 0.144
+  threshold_del = 0.143
   indel_count_matrix_threshold[np.logical_and(indel_count_matrix_threshold <= threshold_del, del_locaion)] = 0.0
   #
   # For each gene-grna pair, count the number of indels above threshold
