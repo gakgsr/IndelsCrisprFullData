@@ -23,7 +23,7 @@ def jaccard_distance(set1,set2):
   return 1 - float(len(list(set(set1) & set(set2)))) / len(list(set(set1) | set(set2)))
 
 def variation_patients_and_lump(indel_count_matrix,sequence_file_name, name_genes_grna_unique):
-  topk = 20
+  topk = 15
   num_indel, num_crispr = np.shape(indel_count_matrix)
   indel_set_matrix = np.zeros((topk,num_crispr))
   for crispr in range(num_crispr):
@@ -83,6 +83,9 @@ def variation_patients_and_lump(indel_count_matrix,sequence_file_name, name_gene
   ARI = adjusted_rand_score(list(labels), list(np.sort(site_map)))
   print "ARI = ", ARI
 
+
+
+
   # # this is to find the inner and outer distance variations
   # iner_distances = []
   # all_distances = []
@@ -101,6 +104,20 @@ def variation_patients_and_lump(indel_count_matrix,sequence_file_name, name_gene
   # print "all jaccard distance mean", np.mean(all_distances)
   # print "all jaccard distance std", np.std(all_distances)
 
+
+  n, bins, patches = plt.hist(site_counter_list, facecolor='green')
+  plt.xlabel('Number of Patients in Sites')
+  plt.ylabel('Count')
+  plt.title('Histogram')
+  plt.savefig('histogram_patient_site.pdf')
+  plt.clf()
+
+  print "n = " , n
+  print "bins = ", bins
+  print "patches = ", patches
+
+  print 'max number of pat per site', np.max(site_counter_list)
+  print 'total number of crispr outcomes', np.sum(site_counter_list)
 
   # # this is to plot the jaccard distance matrix
   # plt.imshow(jaccard_matrix, cmap='hot', interpolation='nearest')
@@ -136,16 +153,19 @@ def plot_interaction_network(adj_list, name_val):
       for i3 in range(4):
         for i4 in range(4):
           if(np.abs(adj_list[ij_counter, i3, i4]) >= min_wt and adj_list[ij_counter, i3, i4] > 0):
+            print adj_list[ij_counter, i3, i4]
             G.add_edge(str(i1+1) + nucleotide_array[i3], str(i2+1) + nucleotide_array[i4], w = np.abs(adj_list[ij_counter, i3, i4]), c = 'b')
           if(np.abs(adj_list[ij_counter, i3, i4]) >= min_wt and adj_list[ij_counter, i3, i4] <= 0):
             G.add_edge(str(i1+1) + nucleotide_array[i3], str(i2+1) + nucleotide_array[i4], w = np.abs(adj_list[ij_counter, i3, i4]), c = 'g')
+            print adj_list[ij_counter, i3, i4]
       ij_counter += 1
 
   plt.figure()
   edges = G.edges()
   colors = [G[u][v]['c'] for u,v in edges]
   weights = [G[u][v]['w'] for u,v in edges]
-  nx.draw(G, nx.circular_layout(G), font_size = 10, node_color = 'y', with_labels=True, edges=edges, edge_color=colors, width=weights)
+  #nx.draw(G, nx.circular_layout(G), font_size = 10, node_color = 'y', with_labels=True, edges=edges, edge_color=colors, width=weights)
+  nx.draw(G, nx.circular_layout(G), font_size=10, node_color='y', with_labels=True)
   plt.savefig(name_val + 'interaction_network.pdf')
   plt.clf()
 
@@ -243,7 +263,7 @@ def load_gene_sequence_k_mer(sequence_file_name, name_genes_grna_unique, k):
 
 
 def perform_logistic_regression(sequence_pam_per_gene_grna, count_insertions_gene_grna_binary, count_deletions_gene_grna_binary, train_index, test_index, ins_coeff, del_coeff, to_plot = False):
-  log_reg = linear_model.LogisticRegression(penalty='l2', C=10)
+  log_reg = linear_model.LogisticRegression(penalty='l2', C=5)
   #print "----"
   #print "Number of positive testing samples in insertions is %f" % np.sum(count_insertions_gene_grna_binary[test_index])
   #print "Total number of testing samples %f" % np.size(test_index)
@@ -290,8 +310,8 @@ def cross_validation_model(sequence_pam_per_gene_grna, count_insertions_gene_grn
   total_deletion_avg_accuracy = []
   ins_coeff = []
   del_coeff = []
-  for repeat in range(50):
-    print "repeat ", repeat
+  for repeat in range(4):
+    #print "repeat ", repeat
     number_of_splits = 3
     fold_valid = KFold(n_splits = number_of_splits, shuffle = True, random_state = repeat)
     insertion_avg_accuracy = 0.0
@@ -377,7 +397,7 @@ print "loading length_indel ..."
 length_indel = pickle.load(open('storage/length_indel.p', 'rb'))
 
 
-indel_set_matrix,jaccard_matrix,unique_patient_per_site_index_list = variation_patients_and_lump(indel_count_matrix,sequence_file_name, name_genes_grna_unique)
+#indel_set_matrix,jaccard_matrix,unique_patient_per_site_index_list = variation_patients_and_lump(indel_count_matrix,sequence_file_name, name_genes_grna_unique)
 # indel_count_matrix = np.delete(indel_count_matrix, unique_patient_per_site_index_list, 1)
 # indel_prop_matrix = np.delete(indel_prop_matrix, unique_patient_per_site_index_list, 1)
 # name_genes_grna_unique = list(np.delete(name_genes_grna_unique, unique_patient_per_site_index_list, 0))
@@ -386,14 +406,14 @@ indel_set_matrix,jaccard_matrix,unique_patient_per_site_index_list = variation_p
 # pickle.dump(indel_prop_matrix, open('storage/indel_prop_matrix_one_patient_per_site.p', 'wb'))
 
 
-#count_insertions_gene_grna, count_deletions_gene_grna = compute_summary_statistics(name_genes_grna_unique, name_indel_type_unique, indel_count_matrix, indel_prop_matrix)
+count_insertions_gene_grna, count_deletions_gene_grna = compute_summary_statistics(name_genes_grna_unique, name_indel_type_unique, indel_count_matrix, indel_prop_matrix)
 
 #sequence_pam_per_gene_grna, sequence_per_gene_grna, pam_per_gene_grna = load_gene_sequence(sequence_file_name, name_genes_grna_unique)
-#sequence_pam_per_gene_grna = load_gene_sequence_interaction(sequence_file_name, name_genes_grna_unique)
+sequence_pam_per_gene_grna = load_gene_sequence_interaction(sequence_file_name, name_genes_grna_unique)
 
 
-#print "Using both Spacer and PAM"
-#cross_validation_model(sequence_pam_per_gene_grna, count_insertions_gene_grna, count_deletions_gene_grna)
+print "Using both Spacer and PAM"
+cross_validation_model(sequence_pam_per_gene_grna, count_insertions_gene_grna, count_deletions_gene_grna)
 #print "Using only Spacer"
 #cross_validation_model(sequence_per_gene_grna, count_insertions_gene_grna, count_deletions_gene_grna)
 #print "Using only PAM"
