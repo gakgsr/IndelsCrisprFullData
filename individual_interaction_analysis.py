@@ -199,16 +199,16 @@ sequence_file_name = "sequence_pam_gene_grna_big_file_donor.csv"
 data_folder = "/Users/amirali/Projects/CRISPR-data-Feb18/20nt_counts_only/"
 
 print "loading name_genes_grna_unique ..."
-#name_genes_grna_unique = pickle.load(open('storage/name_genes_grna_unique_one_patient_per_site.p', 'rb'))
-name_genes_grna_unique = pickle.load(open('storage/name_genes_grna_unique.p', 'rb'))
+name_genes_grna_unique = pickle.load(open('storage/name_genes_grna_unique_one_patient_per_site.p', 'rb'))
+#name_genes_grna_unique = pickle.load(open('storage/name_genes_grna_unique.p', 'rb'))
 print "loading name_indel_type_unique ..."
 name_indel_type_unique = pickle.load(open('storage/name_indel_type_unique.p', 'rb'))
 print "loading indel_count_matrix ..."
-#indel_count_matrix = pickle.load(open('storage/indel_count_matrix_one_patient_per_site.p', 'rb'))
-indel_count_matrix = pickle.load(open('storage/indel_count_matrix.p', 'rb'))
+indel_count_matrix = pickle.load(open('storage/indel_count_matrix_one_patient_per_site.p', 'rb'))
+#indel_count_matrix = pickle.load(open('storage/indel_count_matrix.p', 'rb'))
 print "loading indel_prop_matrix ..."
-#indel_prop_matrix = pickle.load(open('storage/indel_prop_matrix_one_patient_per_site.p', 'rb'))
-indel_prop_matrix = pickle.load(open('storage/indel_prop_matrix.p', 'rb'))
+indel_prop_matrix = pickle.load(open('storage/indel_prop_matrix_one_patient_per_site.p', 'rb'))
+#indel_prop_matrix = pickle.load(open('storage/indel_prop_matrix.p', 'rb'))
 print "loading length_indel ..."
 length_indel = pickle.load(open('storage/length_indel.p', 'rb'))
 
