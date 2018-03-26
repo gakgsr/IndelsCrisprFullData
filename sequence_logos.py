@@ -51,9 +51,24 @@ def plot_seq_logo(logo_heights, name):
     x += 1
     maxi = max(maxi, y)
 
-  plt.xticks(range(1, x))
+  #plt.xticks(range(1, x))
+  plt.xticks([0,10,20,30,40,50,60,70,80,90,100],[-50,-40,-30,-20,-10,0,10,20,30,40,50])
   plt.xlim((0, x)) 
   plt.ylim((mini, maxi)) 
   plt.tight_layout()      
   plt.savefig('sequence_logo_' + name + '.pdf')
   plt.clf()
+
+def plot_QQ(vec1,vec2,name):
+
+    plt.figure(figsize=(9, 8), dpi=200, facecolor='w', edgecolor='k')
+    plt.plot(vec1,vec2,'o')
+    identity_line = np.linspace(max(min(vec1), min(vec2)),
+                                min(max(vec1), max(vec2)))
+    plt.plot(identity_line, identity_line, color="black", linestyle="dashed", linewidth=1.0)
+    plt.grid(True)
+    plt.axis('scaled')
+    plt.xlabel('Predicted')
+    plt.ylabel('Ground Truth')
+    plt.savefig('plots/'+ name +'.pdf')
+    plt.clf()

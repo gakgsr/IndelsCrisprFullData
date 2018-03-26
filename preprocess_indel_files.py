@@ -55,7 +55,9 @@ def preprocess_indel_files(data_folder):
   ##
   # Then process the files again to get the actual counts from only the desired files, and from the desired rows and columns
   indel_count_matrix = np.zeros((len(name_indel_type_unique), len(name_genes_grna_unique)))
-  length_indel = np.zeros(len(name_indel_type_unique), dtype = int)
+  length_indel_insertion = np.zeros(len(name_indel_type_unique), dtype = int)
+  length_indel_deletion = np.zeros(len(name_indel_type_unique), dtype=int)
+
   for each_file in glob.glob(count_data_folder + "counts-*.txt"):
     #print each_file
     with open(each_file) as f:
@@ -77,25 +79,25 @@ def preprocess_indel_files(data_folder):
           l_indel = line.split('"')[1].split(',')
           l = line.split('"')[2].split(',')[1:]
           indel_type = ''
-          len_indel = 0
+          len_indel_insertion = 0
+          len_indel_deletion = 0
           # Some positions are of the form: "-23:-21D,-19:-15D", which get split by the process when we call split()
           # We try to account for such things in this space
           for j in range(0, np.size(l_indel)):
             indel_type += l_indel[j]
             if l_indel[j].find('I') != -1:
-              begn_end = l_indel[j].replace("I", "")
-              begn_end = begn_end.split(':')
-              if int(begn_end[1])>=int(begn_end[0]):
-                len_indel += int(begn_end[1]) - int(begn_end[0]) + 1
+              begn_size = l_indel[j].replace("I", "")
+              begn_size = begn_size.split(':')
+              len_indel_insertion += int(begn_size[1])
             if l_indel[j].find('D') != -1:
-              begn_end = l_indel[j].replace("D", "")
-              begn_end = begn_end.split(':')
-              if int(begn_end[1]) >= int(begn_end[0]):
-                len_indel += int(begn_end[1]) - int(begn_end[0]) + 1
+              begn_size = l_indel[j].replace("D", "")
+              begn_size = begn_size.split(':')
+              len_indel_deletion += int(begn_size[1])
           # We ignore SNV, others, and no variants
           if line.find('I') != -1 or line.find('D') != -1:
             row_index = name_indel_type_unique.index(indel_type)
-            length_indel[row_index] = len_indel
+            length_indel_insertion[row_index] = len_indel_insertion
+            length_indel_deletion[row_index] = len_indel_deletion
             for j in range(np.size(l)):
               if l[j] != 'NA':
                 indel_count_matrix[row_index,col_index[j]] = float(l[j])
@@ -158,7 +160,8 @@ def preprocess_indel_files(data_folder):
   name_indel_type_unique = np.delete(name_indel_type_unique, rare_indel_index).tolist()
   indel_count_matrix = np.delete(indel_count_matrix, rare_indel_index, 0)
   indel_prop_matrix = np.delete(indel_prop_matrix, rare_indel_index, 0)
-  length_indel = np.delete(length_indel, rare_indel_index, 0)
+  length_indel_insertion = np.delete(length_indel_insertion, rare_indel_index, 0)
+  length_indel_deletion = np.delete(length_indel_deletion, rare_indel_index, 0)
   ######
 
 
@@ -188,6 +191,6 @@ def preprocess_indel_files(data_folder):
   #np.savetxt("indel_count_matrix.txt", indel_count_matrix)
   #np.savetxt("indel_prop_matrix.txt", indel_prop_matrix)
 
-  return name_genes_unique, name_genes_grna_unique, name_indel_type_unique, indel_count_matrix, indel_prop_matrix, length_indel
+  return name_genes_unique, name_genes_grna_unique, name_indel_type_unique, indel_count_matrix, indel_prop_matrix, length_indel_insertion, length_indel_deletion
   #return name_genes_unique, name_genes_grna_unique, name_indel_type_unique , indel_count_matrix
 

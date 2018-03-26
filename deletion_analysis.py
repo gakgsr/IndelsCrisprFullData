@@ -23,7 +23,7 @@ from sklearn.metrics.cluster import adjusted_rand_score
 import scipy.stats as stats
 import math
 from scipy.stats import ttest_ind_from_stats
-
+from scipy.stats import entropy
 
 
 data_folder = "../IndelsFullData/"
@@ -52,9 +52,10 @@ counter =0
 dic_del = {}
 dic_del_start = {}
 dic_del_stop = {}
+dic_del_len = np.zeros(indel_num)
 min_start=0
 max_stop=0
-for indel_index in range(len(name_indel_type_unique)):
+for indel_index in range(indel_num):
     dic_del[counter]=[]
     dic_del_start[counter] = []
     dic_del_stop[counter] = []
@@ -62,19 +63,18 @@ for indel_index in range(len(name_indel_type_unique)):
     indel_types = ''.join(c for c in name_indel_type_unique[indel_index] if (c=='I' or c=='D'))
     for i in range(len(indel_types)):
         if indel_types[i]=='D':
-            start,stop = indel_locations[i].split(':')
+            start,size = indel_locations[i].split(':')
             start = int(start)
-            stop = int(stop)
-
+            size = int(size)
             if start > 0:
                 start = start -1
-            if stop > 0:
-                stop = stop - 1
+            stop = start + size
 
             dic_del[counter].append(start)
             dic_del[counter].append(stop)
             dic_del_start[counter].append(start)
             dic_del_stop[counter].append(stop)
+            dic_del_len[counter] += float(size)
 
             if start<min_start:
                 min_start = start
@@ -103,58 +103,251 @@ for indel_index in range(indel_num):
         context_read_count_stop[0,list_stop[i]+abs(min_start)] += read_count
 
 
-plt.plot(range(min_start,max_stop+1),context_read_count[0,:]/np.sum(context_read_count[0,:]))
-plt.ylabel('Marginal Prob.')
-plt.xlabel('Genomic Context Location')
-plt.title('Deletion Boundary Location')
-plt.savefig('plots/deletion_context_location_prob.pdf')
-plt.clf()
+# plt.plot(range(min_start,max_stop+1),context_read_count[0,:]/np.sum(context_read_count[0,:]))
+# plt.ylabel('Marginal Prob.')
+# plt.xlabel('Genomic Context Location')
+# plt.title('Deletion Boundary Location')
+# plt.savefig('plots/deletion_context_location_prob.pdf')
+# plt.clf()
+#
+#
+# plt.plot(range(min_start,max_stop+1),context_read_count_start[0,:]/np.sum(context_read_count_start[0,:]))
+# plt.ylabel('Marginal Prob.')
+# plt.xlabel('Genomic Context Location')
+# plt.title('Deletion Start Location')
+# plt.savefig('plots/deletion_start_context_location_prob.pdf')
+# plt.clf()
+#
+# plt.plot(range(min_start,max_stop+1),context_read_count_stop[0,:]/np.sum(context_read_count_stop[0,:]))
+# plt.ylabel('Marginal Prob.')
+# plt.xlabel('Genomic Context Location')
+# plt.title('Deletion Stop Location')
+# plt.savefig('plots/deletion_stop_context_location_prob.pdf')
+# plt.clf()
+#
+# print "variation of lengths"
+# print "mean length =", np.dot(dic_del_len,indel_count_matrix_sum) / np.sum(indel_count_matrix_sum)
+# print dic_del_len
+# print indel_count_matrix_sum
+# #print "std length =", np.std(np.dot(dic_del_len,indel_count_matrix_sum))
 
-plt.plot(range(min_start,max_stop+1),context_read_count_start[0,:]/np.sum(context_read_count_start[0,:]))
-plt.ylabel('Marginal Prob.')
-plt.xlabel('Genomic Context Location')
-plt.title('Deletion Start Location')
-plt.savefig('plots/deletion_start_context_location_prob.pdf')
-plt.clf()
 
-plt.plot(range(min_start,max_stop+1),context_read_count_stop[0,:]/np.sum(context_read_count_stop[0,:]))
-plt.ylabel('Marginal Prob.')
-plt.xlabel('Genomic Context Location')
-plt.title('Deletion Stop Location')
-plt.savefig('plots/deletion_stop_context_location_prob.pdf')
-plt.clf()
-
-###########
+# ########### Creat Deletion Marginal Probablity Matrix
 context_probability_matrix = np.zeros((context_len,site_num))
 for indel_index in range(indel_num):
     list = dic_del[indel_index]
     for site in range(site_num):
         for i in range(len(list)):
             context_probability_matrix[list[i]+abs(min_start),site] += indel_fraction_mutant_matrix[indel_index,site]
-
-
 deletion_context_probability_matrix = context_probability_matrix /  np.reshape(np.sum(context_probability_matrix, axis=0), (1, -1))
-#pickle.dump(deletion_context_probability_matrix, open('storage/deletion_context_probability_matrix.p', 'wb'))
-
-###########
-context_genome_dict = {}
-with open('sequence_pam_gene_grna_big_file_donor_genomic_context.csv', 'rb') as csvfile:
-    spamreader = csv.reader(csvfile, delimiter=' ', quotechar='|')
-    row_counter = 0
-    for row in spamreader:
-        context_genome_dict[row[0].split(',')[0]]=row[0].split(',')[6]
-
-counter = 0
-file=open('storage/genomic_context.txt','w')
-for site_name in name_genes_grna_unique:
-    site_name_list = site_name.split('-')
-    file.write('%s\n' %context_genome_dict[site_name_list[1]+'-'+site_name_list[2]])
-    counter += 1
-
-print counter
+pickle.dump(deletion_context_probability_matrix, open('storage/deletion_context_probability_matrix.p', 'wb'))
 
 
+plt.plot(range(min_start,max_stop+1),deletion_context_probability_matrix[:,2])
+plt.ylabel('Marginal Prob.')
+plt.xlabel('Genomic Context Location')
+plt.title('Deletion Boundary Location')
+plt.savefig('plots/deletion_context_location_prob.pdf')
+plt.clf()
+
+# ########### Creat all Genomic context file
+# context_genome_dict = {}
+# with open('sequence_pam_gene_grna_big_file_donor_genomic_context.csv', 'rb') as csvfile:
+#     spamreader = csv.reader(csvfile, delimiter=' ', quotechar='|')
+#     row_counter = 0
+#     for row in spamreader:
+#         context_genome_dict[row[0].split(',')[0]]=row[0].split(',')[6]
+#
+# counter = 0
+# file=open('storage/genomic_context.txt','w')
+# for site_name in name_genes_grna_unique:
+#     site_name_list = site_name.split('-')
+#     file.write('%s\n' %context_genome_dict[site_name_list[1]+'-'+site_name_list[2]])
+#     counter += 1
 
 
+###########  Analyzing TT
 
 
+# TT_index = []
+# TT_index_not = []
+# spacer_dict = {}
+# with open('sequence_pam_gene_grna_big_file_donor_genomic_context.csv', 'rb') as csvfile:
+#     spamreader = csv.reader(csvfile, delimiter=' ', quotechar='|')
+#     row_counter = 0
+#     for row in spamreader:
+#         spacer_dict[row[0].split(',')[0]] = row[0].split(',')[2][16:18]
+#
+# counter = 0
+# for site_name in name_genes_grna_unique:
+#     site_name_list = site_name.split('-')
+#     if spacer_dict[site_name_list[1]+'-'+site_name_list[2]] == 'TT':
+#         TT_index.append(counter)
+#     else:
+#         TT_index_not.append(counter)
+#     counter += 1
+#
+# ##
+#
+# indel_fraction_mutant_matrix = indel_count_matrix / np.reshape(np.sum(indel_count_matrix, axis=0), (1, -1))
+# indel_count_matrix_sum = np.sum(indel_fraction_mutant_matrix[:,TT_index],axis=1)
+#
+# context_read_count_TT = np.zeros((1,context_len))
+# context_read_count_start_TT = np.zeros((1,context_len))
+# context_read_count_stop_TT = np.zeros((1,context_len))
+#
+# for indel_index in range(indel_num):
+#     list = dic_del[indel_index]
+#     list_start = dic_del_start[indel_index]
+#     list_stop = dic_del_stop[indel_index]
+#     read_count = indel_count_matrix_sum[indel_index]
+#     for i in range(len(list)):
+#         context_read_count_TT[0,list[i]+abs(min_start)] += read_count
+#     for i in range(len(list_start)):
+#         context_read_count_start_TT[0,list_start[i]+abs(min_start)] += read_count
+#     for i in range(len(list_stop)):
+#         context_read_count_stop_TT[0,list_stop[i]+abs(min_start)] += read_count
+#
+# ##
+#
+# indel_fraction_mutant_matrix = indel_count_matrix / np.reshape(np.sum(indel_count_matrix, axis=0), (1, -1))
+# indel_count_matrix_sum = np.sum(indel_fraction_mutant_matrix[:,TT_index_not],axis=1)
+#
+# context_read_count_no_TT = np.zeros((1,context_len))
+# context_read_count_start_no_TT = np.zeros((1,context_len))
+# context_read_count_stop_no_TT = np.zeros((1,context_len))
+#
+# for indel_index in range(indel_num):
+#     list = dic_del[indel_index]
+#     list_start = dic_del_start[indel_index]
+#     list_stop = dic_del_stop[indel_index]
+#     read_count = indel_count_matrix_sum[indel_index]
+#     for i in range(len(list)):
+#         context_read_count_no_TT[0,list[i]+abs(min_start)] += read_count
+#     for i in range(len(list_start)):
+#         context_read_count_start_no_TT[0,list_start[i]+abs(min_start)] += read_count
+#     for i in range(len(list_stop)):
+#         context_read_count_stop_no_TT[0,list_stop[i]+abs(min_start)] += read_count
+#
+# plt.plot(range(min_start,max_stop+1),context_read_count_TT[0,:]/np.sum(context_read_count_TT[0,:]))
+# plt.plot(range(min_start,max_stop+1),context_read_count_no_TT[0,:]/np.sum(context_read_count_no_TT[0,:]),'r')
+# plt.ylabel('Marginal Prob.')
+# plt.xlabel('Genomic Context Location')
+# plt.title('Deletion Boundary Location')
+# plt.legend(['TT Type','Wild Type'])
+# plt.savefig('plots/deletion_context_location_prob.pdf')
+# plt.clf()
+#
+# print "KL distance"
+# print entropy(context_read_count_TT[0,:]/np.sum(context_read_count_TT[0,:]), context_read_count_no_TT[0,:]/np.sum(context_read_count_no_TT[0,:]))
+#
+# plt.plot(range(min_start,max_stop+1),context_read_count_start_TT[0,:]/np.sum(context_read_count_start_TT[0,:]))
+# plt.plot(range(min_start,max_stop+1),context_read_count_start_no_TT[0,:]/np.sum(context_read_count_start_no_TT[0,:]),'r')
+# plt.ylabel('Marginal Prob.')
+# plt.xlabel('Genomic Context Location')
+# plt.title('Deletion Boundary Location')
+# plt.legend(['TT Type','Wild Type'])
+# plt.savefig('plots/deletion_start_context_location_prob.pdf')
+#
+# plt.clf()
+#
+# plt.plot(range(min_start,max_stop+1),context_read_count_stop_TT[0,:]/np.sum(context_read_count_stop_TT[0,:]))
+# plt.plot(range(min_start,max_stop+1),context_read_count_stop_no_TT[0,:]/np.sum(context_read_count_stop_no_TT[0,:]),'r')
+# plt.ylabel('Marginal Prob.')
+# plt.xlabel('Genomic Context Location')
+# plt.title('Deletion Boundary Location')
+# plt.legend(['TT Type','Wild Type'])
+# plt.savefig('plots/deletion_stop_context_location_prob.pdf')
+# plt.clf()
+
+
+####### Analyzing T
+
+# TT_index = []
+# TT_index_not = []
+# spacer_dict = {}
+# with open('sequence_pam_gene_grna_big_file_donor_genomic_context.csv', 'rb') as csvfile:
+#     spamreader = csv.reader(csvfile, delimiter=' ', quotechar='|')
+#     row_counter = 0
+#     for row in spamreader:
+#         spacer_dict[row[0].split(',')[0]] = row[0].split(',')[2][17]
+#
+# counter = 0
+# for site_name in name_genes_grna_unique:
+#     site_name_list = site_name.split('-')
+#     if spacer_dict[site_name_list[1]+'-'+site_name_list[2]] == 'T':
+#         TT_index.append(counter)
+#     else:
+#         TT_index_not.append(counter)
+#     counter += 1
+#
+# print len(TT_index)
+#
+# ##
+#
+# indel_fraction_mutant_matrix = indel_count_matrix / np.reshape(np.sum(indel_count_matrix, axis=0), (1, -1))
+# indel_count_matrix_sum = np.sum(indel_fraction_mutant_matrix[:,TT_index],axis=1)
+#
+# context_read_count_TT = np.zeros((1,context_len))
+# context_read_count_start_TT = np.zeros((1,context_len))
+# context_read_count_stop_TT = np.zeros((1,context_len))
+#
+# for indel_index in range(indel_num):
+#     list = dic_del[indel_index]
+#     list_start = dic_del_start[indel_index]
+#     list_stop = dic_del_stop[indel_index]
+#     read_count = indel_count_matrix_sum[indel_index]
+#     for i in range(len(list)):
+#         context_read_count_TT[0,list[i]+abs(min_start)] += read_count
+#     for i in range(len(list_start)):
+#         context_read_count_start_TT[0,list_start[i]+abs(min_start)] += read_count
+#     for i in range(len(list_stop)):
+#         context_read_count_stop_TT[0,list_stop[i]+abs(min_start)] += read_count
+#
+# ##
+#
+# indel_fraction_mutant_matrix = indel_count_matrix / np.reshape(np.sum(indel_count_matrix, axis=0), (1, -1))
+# indel_count_matrix_sum = np.sum(indel_fraction_mutant_matrix[:,TT_index_not],axis=1)
+#
+# context_read_count_no_TT = np.zeros((1,context_len))
+# context_read_count_start_no_TT = np.zeros((1,context_len))
+# context_read_count_stop_no_TT = np.zeros((1,context_len))
+#
+# for indel_index in range(indel_num):
+#     list = dic_del[indel_index]
+#     list_start = dic_del_start[indel_index]
+#     list_stop = dic_del_stop[indel_index]
+#     read_count = indel_count_matrix_sum[indel_index]
+#     for i in range(len(list)):
+#         context_read_count_no_TT[0,list[i]+abs(min_start)] += read_count
+#     for i in range(len(list_start)):
+#         context_read_count_start_no_TT[0,list_start[i]+abs(min_start)] += read_count
+#     for i in range(len(list_stop)):
+#         context_read_count_stop_no_TT[0,list_stop[i]+abs(min_start)] += read_count
+#
+# plt.plot(range(min_start,max_stop+1),context_read_count_TT[0,:]/np.sum(context_read_count_TT[0,:]))
+# plt.plot(range(min_start,max_stop+1),context_read_count_no_TT[0,:]/np.sum(context_read_count_no_TT[0,:]),'r')
+# plt.ylabel('Marginal Prob.')
+# plt.xlabel('Genomic Context Location')
+# plt.title('Deletion Boundary Location')
+# plt.savefig('plots/deletion_context_location_prob.pdf')
+# plt.clf()
+#
+# print "KL distance"
+# print entropy(context_read_count_TT[0,:]/np.sum(context_read_count_TT[0,:]), context_read_count_no_TT[0,:]/np.sum(context_read_count_no_TT[0,:]))
+#
+# plt.plot(range(min_start,max_stop+1),context_read_count_start_TT[0,:]/np.sum(context_read_count_start_TT[0,:]))
+# plt.plot(range(min_start,max_stop+1),context_read_count_start_no_TT[0,:]/np.sum(context_read_count_start_no_TT[0,:]),'r')
+# plt.ylabel('Marginal Prob.')
+# plt.xlabel('Genomic Context Location')
+# plt.title('Deletion Boundary Location')
+# plt.savefig('plots/deletion_start_context_location_prob.pdf')
+# plt.clf()
+#
+# plt.plot(range(min_start,max_stop+1),context_read_count_stop_TT[0,:]/np.sum(context_read_count_stop_TT[0,:]))
+# plt.plot(range(min_start,max_stop+1),context_read_count_stop_no_TT[0,:]/np.sum(context_read_count_stop_no_TT[0,:]),'r')
+# plt.ylabel('Marginal Prob.')
+# plt.xlabel('Genomic Context Location')
+# plt.title('Deletion Boundary Location')
+# plt.savefig('plots/deletion_stop_context_location_prob.pdf')
+# plt.clf()
