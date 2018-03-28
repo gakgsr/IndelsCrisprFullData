@@ -37,8 +37,6 @@ indel_count_matrix = pickle.load(open('storage/indel_count_matrix_one_patient_pe
 indel_prop_matrix = pickle.load(open('storage/indel_prop_matrix_one_patient_per_site.p', 'rb'))
 length_indel = pickle.load(open('storage/length_indel.p', 'rb'))
 
-
-
 indel_num,site_num =  np.shape(indel_count_matrix)
 print 'number of sites = ', site_num
 print 'number of indel types = ', indel_num
@@ -89,6 +87,7 @@ context_len = max_stop - min_start + 1
 context_read_count = np.zeros((1,context_len))
 context_read_count_start = np.zeros((1,context_len))
 context_read_count_stop = np.zeros((1,context_len))
+context_read_count_deleted = np.zeros((1,context_len))
 
 for indel_index in range(indel_num):
     list = dic_del[indel_index]
@@ -101,30 +100,38 @@ for indel_index in range(indel_num):
         context_read_count_start[0,list_start[i]+abs(min_start)] += read_count
     for i in range(len(list_stop)):
         context_read_count_stop[0,list_stop[i]+abs(min_start)] += read_count
+    for i in range(len(list_stop)):
+        context_read_count_deleted[0, (list_start[i]+abs(min_start)) : (list_stop[i] + abs(min_start))] += read_count
 
 
-# plt.plot(range(min_start,max_stop+1),context_read_count[0,:]/np.sum(context_read_count[0,:]))
-# plt.ylabel('Marginal Prob.')
-# plt.xlabel('Genomic Context Location')
-# plt.title('Deletion Boundary Location')
-# plt.savefig('plots/deletion_context_location_prob.pdf')
-# plt.clf()
-#
-#
-# plt.plot(range(min_start,max_stop+1),context_read_count_start[0,:]/np.sum(context_read_count_start[0,:]))
-# plt.ylabel('Marginal Prob.')
-# plt.xlabel('Genomic Context Location')
-# plt.title('Deletion Start Location')
-# plt.savefig('plots/deletion_start_context_location_prob.pdf')
-# plt.clf()
-#
-# plt.plot(range(min_start,max_stop+1),context_read_count_stop[0,:]/np.sum(context_read_count_stop[0,:]))
-# plt.ylabel('Marginal Prob.')
-# plt.xlabel('Genomic Context Location')
-# plt.title('Deletion Stop Location')
-# plt.savefig('plots/deletion_stop_context_location_prob.pdf')
-# plt.clf()
-#
+plt.plot(range(min_start,max_stop+1),context_read_count_deleted[0,:]/np.sum(context_read_count_deleted[0,:]))
+plt.ylabel('Marginal Prob.')
+plt.xlabel('Genomic Context Location')
+plt.title('Deleted Locations')
+plt.savefig('plots/deletion_context_location_prob.pdf')
+plt.clf()
+
+plt.plot(range(min_start,max_stop+1),context_read_count[0,:]/np.sum(context_read_count[0,:]))
+plt.ylabel('Marginal Prob.')
+plt.xlabel('Genomic Context Location')
+plt.title('Deletion Boundary Location')
+plt.savefig('plots/deletion_start_stop_context_location_prob.pdf')
+plt.clf()
+
+plt.plot(range(min_start,max_stop+1),context_read_count_start[0,:]/np.sum(context_read_count_start[0,:]))
+plt.ylabel('Marginal Prob.')
+plt.xlabel('Genomic Context Location')
+plt.title('Deletion Start Location')
+plt.savefig('plots/deletion_start_context_location_prob.pdf')
+plt.clf()
+
+plt.plot(range(min_start,max_stop+1),context_read_count_stop[0,:]/np.sum(context_read_count_stop[0,:]))
+plt.ylabel('Marginal Prob.')
+plt.xlabel('Genomic Context Location')
+plt.title('Deletion Stop Location')
+plt.savefig('plots/deletion_stop_context_location_prob.pdf')
+plt.clf()
+
 # print "variation of lengths"
 # print "mean length =", np.dot(dic_del_len,indel_count_matrix_sum) / np.sum(indel_count_matrix_sum)
 # print dic_del_len
@@ -135,40 +142,42 @@ for indel_index in range(indel_num):
 # ########### Creat Deletion Marginal Probablity Matrix
 context_probability_matrix = np.zeros((context_len,site_num))
 for indel_index in range(indel_num):
-    list = dic_del[indel_index]
+    #list = dic_del[indel_index]
+    list_start = dic_del_start[indel_index]
+    list_stop = dic_del_stop[indel_index]
     for site in range(site_num):
-        for i in range(len(list)):
-            context_probability_matrix[list[i]+abs(min_start),site] += indel_fraction_mutant_matrix[indel_index,site]
+        for i in range(len(list_start)):
+            context_probability_matrix[list_start[i]+abs(min_start):list_stop[i]+abs(min_start),site] += indel_fraction_mutant_matrix[indel_index,site]
 deletion_context_probability_matrix = context_probability_matrix /  np.reshape(np.sum(context_probability_matrix, axis=0), (1, -1))
 pickle.dump(deletion_context_probability_matrix, open('storage/deletion_context_probability_matrix.p', 'wb'))
 
+for site_id in range(5):
+    plt.plot(range(min_start,max_stop+1),deletion_context_probability_matrix[:,site_id])
+    plt.ylabel('Marginal Prob.')
+    plt.xlabel('Genomic Context Location')
+    #plt.title('Deletion Boundary Location')
+    plt.savefig('plots/deletion_context_location_prob_single_site'+ str(site_id) +'.pdf')
+    plt.clf()
 
-plt.plot(range(min_start,max_stop+1),deletion_context_probability_matrix[:,2])
-plt.ylabel('Marginal Prob.')
-plt.xlabel('Genomic Context Location')
-plt.title('Deletion Boundary Location')
-plt.savefig('plots/deletion_context_location_prob.pdf')
-plt.clf()
 
 # ########### Creat all Genomic context file
-# context_genome_dict = {}
-# with open('sequence_pam_gene_grna_big_file_donor_genomic_context.csv', 'rb') as csvfile:
-#     spamreader = csv.reader(csvfile, delimiter=' ', quotechar='|')
-#     row_counter = 0
-#     for row in spamreader:
-#         context_genome_dict[row[0].split(',')[0]]=row[0].split(',')[6]
-#
-# counter = 0
-# file=open('storage/genomic_context.txt','w')
-# for site_name in name_genes_grna_unique:
-#     site_name_list = site_name.split('-')
-#     file.write('%s\n' %context_genome_dict[site_name_list[1]+'-'+site_name_list[2]])
-#     counter += 1
+context_genome_dict = {}
+with open('sequence_pam_gene_grna_big_file_donor_genomic_context.csv', 'rb') as csvfile:
+    spamreader = csv.reader(csvfile, delimiter=' ', quotechar='|')
+    row_counter = 0
+    for row in spamreader:
+        context_genome_dict[row[0].split(',')[0]]=row[0].split(',')[6]
 
+counter = 0
+file=open('storage/genomic_context.txt','w')
+for site_name in name_genes_grna_unique:
+    site_name_list = site_name.split('-')
+    file.write('%s\n' %context_genome_dict[site_name_list[1]+'-'+site_name_list[2]])
+    counter += 1
 
 ###########  Analyzing TT
 
-
+# two_letter = 'AG'
 # TT_index = []
 # TT_index_not = []
 # spacer_dict = {}
@@ -181,7 +190,7 @@ plt.clf()
 # counter = 0
 # for site_name in name_genes_grna_unique:
 #     site_name_list = site_name.split('-')
-#     if spacer_dict[site_name_list[1]+'-'+site_name_list[2]] == 'TT':
+#     if spacer_dict[site_name_list[1]+'-'+site_name_list[2]] == two_letter:
 #         TT_index.append(counter)
 #     else:
 #         TT_index_not.append(counter)
