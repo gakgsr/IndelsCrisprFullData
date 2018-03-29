@@ -53,6 +53,12 @@ dic_del_stop = {}
 dic_del_len = np.zeros(indel_num)
 min_start=0
 max_stop=0
+
+boundary_dic = {}
+for nuc1 in ['A', 'C', 'G', 'T']:
+    for nuc2 in ['A', 'C', 'G', 'T']:
+        boundary_dic[nuc1+nuc2] = 0.
+
 for indel_index in range(indel_num):
     dic_del[counter]=[]
     dic_del_start[counter] = []
@@ -159,7 +165,6 @@ for site_id in range(5):
     plt.savefig('plots/deletion_context_location_prob_single_site'+ str(site_id) +'.pdf')
     plt.clf()
 
-
 # ########### Creat all Genomic context file
 context_genome_dict = {}
 with open('sequence_pam_gene_grna_big_file_donor_genomic_context.csv', 'rb') as csvfile:
@@ -174,6 +179,83 @@ for site_name in name_genes_grna_unique:
     site_name_list = site_name.split('-')
     file.write('%s\n' %context_genome_dict[site_name_list[1]+'-'+site_name_list[2]])
     counter += 1
+
+print "context size =", len(context_genome_dict[site_name_list[1]+'-'+site_name_list[2]])
+print "min start = ", min_start
+
+###########
+site = 0
+for site_name in name_genes_grna_unique:
+    site_name_list = site_name.split('-')
+    for indel_index in range(indel_num):
+        list_start = dic_del_start[indel_index]
+        list_stop = dic_del_stop[indel_index]
+        for i in range(len(list_start)):
+            #print list_start[i]+abs(min_start)
+            if list_start[i]+50 < 99 and list_start[i]+50 >= 1 and list_stop[i]+50 < 99 and list_stop[i]+50 >= 1:
+
+                nuc1 = context_genome_dict[site_name_list[1] + '-' + site_name_list[2]][list_start[i]+49]
+                nuc2 = context_genome_dict[site_name_list[1] + '-' + site_name_list[2]][list_start[i]+50]
+
+                nuc3 = context_genome_dict[site_name_list[1] + '-' + site_name_list[2]][list_stop[i]+49]
+                nuc4 = context_genome_dict[site_name_list[1] + '-' + site_name_list[2]][list_stop[i]+50]
+
+                if nuc1 == 'a':
+                    nuc1 = 'A'
+                elif nuc1 == 't':
+                    nuc1 = 'T'
+                elif nuc1 == 'c':
+                    nuc1 = 'C'
+                elif nuc1 == 'g':
+                    nuc1 = 'G'
+
+                if nuc2 == 'a':
+                    nuc2 = 'A'
+                elif nuc2 == 't':
+                    nuc2 = 'T'
+                elif nuc2 == 'c':
+                    nuc2 = 'C'
+                elif nuc2 == 'g':
+                    nuc2 = 'G'
+
+                if nuc3 == 'a':
+                    nuc3 = 'A'
+                elif nuc3 == 't':
+                    nuc3 = 'T'
+                elif nuc3 == 'c':
+                    nuc3 = 'C'
+                elif nuc3 == 'g':
+                    nuc3 = 'G'
+
+                if nuc4 == 'a':
+                    nuc4 = 'A'
+                elif nuc4 == 't':
+                    nuc4 = 'T'
+                elif nuc4 == 'c':
+                    nuc4 = 'C'
+                elif nuc4 == 'g':
+                    nuc4 = 'G'
+
+                boundary_dic[nuc1+nuc2] += indel_fraction_mutant_matrix[indel_index,site]
+                boundary_dic[nuc3+nuc4] += indel_fraction_mutant_matrix[indel_index, site]
+        # add stop
+    site += 1
+
+print boundary_dic
+
+legend_nuc = []
+vec_to_plot = []
+for nuc1 in ['A', 'C', 'G', 'T']:
+    for nuc2 in ['A', 'C', 'G', 'T']:
+        vec_to_plot.append(boundary_dic[nuc1+nuc2])
+        legend_nuc.append(nuc1+nuc2)
+
+plt.stem(vec_to_plot/np.sum(vec_to_plot))
+plt.ylabel('Prob.')
+plt.xticks(range(0,16),legend_nuc)
+plt.savefig('plots/deletion_boundary.pdf')
+plt.clf()
+
 
 ###########  Analyzing TT
 
