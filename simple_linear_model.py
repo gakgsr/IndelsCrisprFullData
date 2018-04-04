@@ -12,7 +12,33 @@ from sequence_logos import plot_seq_logo
 from sequence_logos import plot_QQ
 from sklearn.metrics import mean_squared_error
 from math import sqrt
+from sklearn.feature_selection import f_regression
+import glob
 
+
+def eff_vec_finder(indel_count_matrix,name_genes_grna_unique):
+    num_indel,num_site = np.shape(indel_count_matrix)
+    dict_eff = {}
+    for filename in glob.glob('/Users/amirali/Projects/muteff/*.txt'):
+        file = open(filename)
+        for line in file:
+            if 'RL384' in line:
+                line = line.replace('_','-')
+                line = line.replace('"', '')
+                if 'N' not in line.split(',')[1]:
+                    eff = float(line.split(',')[1])
+                    line_list = (line.split(',')[0]).split('-')
+                    dict_eff[line_list[1]+'-'+line_list[2]] = eff
+
+
+    eff_vec = np.zeros(num_site)
+    site = 0
+    for site_name in name_genes_grna_unique:
+        site_name_list = site_name.split('-')
+        eff_vec[site] = dict_eff[site_name_list[1] + '-' + site_name_list[2]]
+        site += 1
+
+    return eff_vec
 
 def my_length_finder(indel_count_matrix,length_indel_insertion,length_indel_deletion,consider_length=1):
   indel_num,site_num = np.shape(indel_count_matrix)
@@ -23,7 +49,6 @@ def my_length_finder(indel_count_matrix,length_indel_insertion,length_indel_dele
   if consider_length ==0:
     length_indel_insertion[length_indel_insertion>0]=1.
     length_indel_deletion[length_indel_deletion>0]=1.
-
 
   indel_fraction_mutant_matrix = indel_count_matrix / np.reshape(np.sum(indel_count_matrix, axis=0), (1, -1))
 
@@ -45,9 +70,10 @@ def one_hot_index(nucleotide):
   nucleotide_array = ['A', 'C', 'G', 'T']
   return nucleotide_array.index(nucleotide)
 
-def load_gene_sequence(sequence_file_name, name_genes_grna_unique):
+def load_gene_sequence(sequence_file_name, name_genes_grna_unique,homopolymer_matrix):
   # Create numpy matrix of size len(name_genes_grna_unique) * 23, to store the sequence as one-hot encoded
   sequence_pam_per_gene_grna = np.zeros((len(name_genes_grna_unique), 23, 4), dtype = bool)
+  sequence_pam_homop_per_gene_grna = np.zeros((len(name_genes_grna_unique), 24, 4))
   sequence_genom_context_gene_grna = np.zeros((len(name_genes_grna_unique), 100, 4), dtype=bool)
   # Obtain the grna and PAM sequence corresponding to name_genes_grna_unique
   with open(sequence_file_name) as f:
@@ -60,14 +86,19 @@ def load_gene_sequence(sequence_file_name, name_genes_grna_unique):
         index_in_name_genes_grna_unique = name_genes_grna_unique.index(l[1] + '-' + l[0])
         for i in range(20):
           sequence_pam_per_gene_grna[index_in_name_genes_grna_unique, i, one_hot_index(l[2][i])] = 1
+          sequence_pam_homop_per_gene_grna[index_in_name_genes_grna_unique, i, one_hot_index(l[2][i])] = 1
         for i in range(3):
           sequence_pam_per_gene_grna[index_in_name_genes_grna_unique, 20 + i, one_hot_index(l[3][i])] = 1
+          sequence_pam_homop_per_gene_grna[index_in_name_genes_grna_unique, 20 + i, one_hot_index(l[3][i])] = 1
+
+        sequence_pam_homop_per_gene_grna[index_in_name_genes_grna_unique, 23 , :] = homopolymer_matrix[:,index_in_name_genes_grna_unique]
+
         for i in range(100):
           sequence_genom_context_gene_grna[index_in_name_genes_grna_unique, i, one_hot_index(l[6][i])] = 1
 
-  plot_seq_logo(np.mean(sequence_pam_per_gene_grna, axis=0), "input_spacer")
+  #plot_seq_logo(np.mean(sequence_pam_per_gene_grna, axis=0), "input_spacer")
   # Scikit needs only a 2-d matrix as input, so reshape and return
-  return np.reshape(sequence_genom_context_gene_grna, (len(sequence_genom_context_gene_grna), -1)),np.reshape(sequence_pam_per_gene_grna, (len(name_genes_grna_unique), -1)), np.reshape(sequence_pam_per_gene_grna[:, :20, :], (len(name_genes_grna_unique), -1)), np.reshape(sequence_pam_per_gene_grna[:, 20:, :], (len(name_genes_grna_unique), -1))
+  return np.reshape(sequence_genom_context_gene_grna, (len(sequence_genom_context_gene_grna), -1)), np.reshape(sequence_pam_homop_per_gene_grna, (len(sequence_pam_homop_per_gene_grna), -1)),np.reshape(sequence_pam_per_gene_grna, (len(name_genes_grna_unique), -1)), np.reshape(sequence_pam_per_gene_grna[:, :20, :], (len(name_genes_grna_unique), -1)), np.reshape(sequence_pam_per_gene_grna[:, 20:, :], (len(name_genes_grna_unique), -1))
 
 def load_gene_sequence_k_mer(sequence_file_name, name_genes_grna_unique, k):
   # Create numpy matrix of size len(name_genes_grna_unique) * 23, to store the sequence first
@@ -98,7 +129,7 @@ def load_gene_sequence_k_mer(sequence_file_name, name_genes_grna_unique, k):
 
 def perform_linear_regression(sequence_pam_per_gene_grna, count_insertions_gene_grna_binary, count_deletions_gene_grna_binary, train_index, test_index, ins_coeff, del_coeff, to_plot = False):
   #lin_reg = linear_model.Lasso(alpha=0.001)
-  lin_reg = linear_model.Ridge(alpha=100)
+  lin_reg = linear_model.Ridge(alpha=1)
   #print "----"
   #print "Number of positive testing samples in insertions is %f" % np.sum(count_insertions_gene_grna_binary[test_index])
   #print "Total number of testing samples %f" % np.size(test_index)
@@ -110,8 +141,13 @@ def perform_linear_regression(sequence_pam_per_gene_grna, count_insertions_gene_
   insertion_rmse = sqrt(mean_squared_error(lin_reg_pred,count_insertions_gene_grna_binary[test_index]))
   ins_coeff.append(lin_reg.coef_)
   if to_plot:
+    pvalue_vec = f_regression(sequence_pam_per_gene_grna[test_index],lin_reg_pred)[1]
+    #pvalue_vec = f_regression(sequence_pam_per_gene_grna[train_index], count_deletions_gene_grna_binary[train_index])[1]
     plot_QQ(lin_reg_pred,count_insertions_gene_grna_binary[test_index],'QQ_linear_insertion')
     plot_seq_logo(lin_reg.coef_, "Insertion_linear")
+    plot_seq_logo(-np.log10(pvalue_vec), "Insertion_linear_pvalue")
+    print 'Insertion ', -np.log10(pvalue_vec)[-4:]
+
   #insertions_r2_score = lin_reg.score(sequence_pam_per_gene_grna[test_index], count_insertions_gene_grna_binary[test_index])
   #print "Test mse_score score for insertions: %f" % insertions_r2_score
   #print "Train mse_score score for insertions: %f" % lin_reg.score(sequence_pam_per_gene_grna[train_index], count_insertions_gene_grna_binary[train_index])
@@ -126,8 +162,12 @@ def perform_linear_regression(sequence_pam_per_gene_grna, count_insertions_gene_
   deletion_rmse = sqrt(mean_squared_error(lin_reg_pred, count_deletions_gene_grna_binary[test_index]))
   del_coeff.append(lin_reg.coef_)
   if to_plot:
+    pvalue_vec = f_regression(sequence_pam_per_gene_grna[test_index], lin_reg_pred)[1]
+    #pvalue_vec = f_regression(sequence_pam_per_gene_grna[train_index], count_deletions_gene_grna_binary[train_index])[1]
+    plot_seq_logo(-np.log10(pvalue_vec), "Deletion_linear_pvalue", '-log(p)' )
     plot_QQ(lin_reg_pred, count_deletions_gene_grna_binary[test_index], 'QQ_linear_deletion')
-    plot_seq_logo(lin_reg.coef_, "Deletion_linear")
+    plot_seq_logo(lin_reg.coef_, "Deletion_linear",'Coefficient')
+    print 'Deletion ', -np.log10(pvalue_vec)[-4:]
   #print "Test r2_score score for deletions: %f" % deletions_r2_score
   #print "Train r2_score score for deletions: %f" % lin_reg.score(sequence_pam_per_gene_grna[train_index], count_deletions_gene_grna_binary[train_index])
   return insertions_r2_score, deletions_r2_score, insertion_rmse, deletion_rmse
@@ -152,7 +192,7 @@ def cross_validation_model(sequence_pam_per_gene_grna, count_insertions_gene_grn
     fold = 0
     for train_index, test_index in fold_valid.split(sequence_pam_per_gene_grna):
       to_plot = False
-      if repeat == 1 and fold == 2:
+      if repeat == 12 and fold == 2:
         to_plot = True
       score_score = perform_linear_regression(sequence_pam_per_gene_grna, count_insertions_gene_grna, count_deletions_gene_grna, train_index, test_index, ins_coeff, del_coeff, to_plot)
       insertion_avg_r2_score += score_score[0]
@@ -216,19 +256,26 @@ indel_prop_matrix = pickle.load(open('storage/indel_prop_matrix_one_patient_per_
 print "loading length_indel ..."
 length_indel_insertion = pickle.load(open('storage/length_indel_insertion.p', 'rb'))
 length_indel_deletion = pickle.load(open('storage/length_indel_deletion.p', 'rb'))
+print "loading homopolymer matrix"
+homopolymer_matrix = pickle.load(open('storage/homopolymer_matrix_w-3:3.p', 'rb'))
 
 #count_insertions_gene_grna, count_deletions_gene_grna = compute_summary_statistics(name_genes_grna_unique, name_indel_type_unique, indel_count_matrix, indel_prop_matrix)
 #prop_insertions_gene_grna, prop_deletions_gene_grna = avg_length_pred()
 
-consider_length = 0
+consider_length = 1
 prop_insertions_gene_grna, prop_deletions_gene_grna = my_length_finder(indel_count_matrix,length_indel_insertion,length_indel_deletion,consider_length)
+eff_vec = eff_vec_finder(indel_count_matrix,name_genes_grna_unique)
 
-sequence_genom_context_gene_grna, sequence_pam_per_gene_grna, sequence_per_gene_grna, pam_per_gene_grna = load_gene_sequence(sequence_file_name, name_genes_grna_unique)
 
-print "Using all Genomic Context"
-cross_validation_model(sequence_genom_context_gene_grna, prop_insertions_gene_grna, prop_deletions_gene_grna)
-#print "Using both grna sequence and PAM"
-#cross_validation_model(sequence_pam_per_gene_grna, prop_insertions_gene_grna, prop_deletions_gene_grna)
+sequence_genom_context_gene_grna, sequence_pam_homop_per_gene_grna , sequence_pam_per_gene_grna, sequence_per_gene_grna, pam_per_gene_grna = load_gene_sequence(sequence_file_name, name_genes_grna_unique,homopolymer_matrix)
+
+
+#print "Using all Genomic Context"
+#cross_validation_model(sequence_genom_context_gene_grna, prop_insertions_gene_grna, prop_deletions_gene_grna)
+#cross_validation_model(sequence_genom_context_gene_grna, eff_vec, eff_vec)
+print "Using both grna sequence and PAM"
+# cross_validation_model(sequence_pam_per_gene_grna, eff_vec, eff_vec)
+cross_validation_model(sequence_pam_homop_per_gene_grna, prop_insertions_gene_grna, prop_deletions_gene_grna)
 #print "Using only grna sequence"
 #cross_validation_model(sequence_per_gene_grna, prop_insertions_gene_grna, prop_deletions_gene_grna)
 #print "Using only PAM"

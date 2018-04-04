@@ -35,7 +35,8 @@ name_genes_grna_unique = pickle.load(open('storage/name_genes_grna_unique_one_pa
 name_indel_type_unique = pickle.load(open('storage/name_indel_type_unique.p', 'rb'))
 indel_count_matrix = pickle.load(open('storage/indel_count_matrix_one_patient_per_site.p', 'rb'))
 indel_prop_matrix = pickle.load(open('storage/indel_prop_matrix_one_patient_per_site.p', 'rb'))
-length_indel = pickle.load(open('storage/length_indel.p', 'rb'))
+length_indel_insertion = pickle.load(open('storage/length_indel_insertion.p', 'rb'))
+length_indel_deletion = pickle.load(open('storage/length_indel_deletion.p', 'rb'))
 
 indel_num,site_num =  np.shape(indel_count_matrix)
 print 'number of sites = ', site_num
@@ -54,11 +55,16 @@ dic_del_len = np.zeros(indel_num)
 min_start=0
 max_stop=0
 
-boundary_dic = {}
-for nuc1 in ['A', 'C', 'G', 'T']:
-    for nuc2 in ['A', 'C', 'G', 'T']:
-        boundary_dic[nuc1+nuc2] = 0.
+# boundary_dic = {}
+# boundary_dic_control = {}
+# for nuc1 in ['A', 'C', 'G', 'T']:
+#     for nuc2 in ['A', 'C', 'G', 'T']:
+#         boundary_dic[nuc1+nuc2] = 0.
+#         boundary_dic_control[nuc1+nuc2] = 0.
 
+
+size_dic = {}
+size_vec = []
 for indel_index in range(indel_num):
     dic_del[counter]=[]
     dic_del_start[counter] = []
@@ -85,58 +91,61 @@ for indel_index in range(indel_num):
             if int(stop)>max_stop:
                 max_stop = stop
 
+            size_dic[size] = 0
+            size_vec.append(size)
+
         # if indel_types[i]=='I':
         #     start, stop = indel_locations[i].split(':')
     counter = counter + 1
 
-context_len = max_stop - min_start + 1
-context_read_count = np.zeros((1,context_len))
-context_read_count_start = np.zeros((1,context_len))
-context_read_count_stop = np.zeros((1,context_len))
-context_read_count_deleted = np.zeros((1,context_len))
+# context_len = max_stop - min_start + 1
+# context_read_count = np.zeros((1,context_len))
+# context_read_count_start = np.zeros((1,context_len))
+# context_read_count_stop = np.zeros((1,context_len))
+# context_read_count_deleted = np.zeros((1,context_len))
+#
+# for indel_index in range(indel_num):
+#     list = dic_del[indel_index]
+#     list_start = dic_del_start[indel_index]
+#     list_stop = dic_del_stop[indel_index]
+#     read_count = indel_count_matrix_sum[indel_index]
+#     for i in range(len(list)):
+#         context_read_count[0,list[i]+abs(min_start)] += read_count
+#     for i in range(len(list_start)):
+#         context_read_count_start[0,list_start[i]+abs(min_start)] += read_count
+#     for i in range(len(list_stop)):
+#         context_read_count_stop[0,list_stop[i]+abs(min_start)] += read_count
+#     for i in range(len(list_stop)):
+#         context_read_count_deleted[0, (list_start[i]+abs(min_start)) : (list_stop[i] + abs(min_start))] += read_count
 
-for indel_index in range(indel_num):
-    list = dic_del[indel_index]
-    list_start = dic_del_start[indel_index]
-    list_stop = dic_del_stop[indel_index]
-    read_count = indel_count_matrix_sum[indel_index]
-    for i in range(len(list)):
-        context_read_count[0,list[i]+abs(min_start)] += read_count
-    for i in range(len(list_start)):
-        context_read_count_start[0,list_start[i]+abs(min_start)] += read_count
-    for i in range(len(list_stop)):
-        context_read_count_stop[0,list_stop[i]+abs(min_start)] += read_count
-    for i in range(len(list_stop)):
-        context_read_count_deleted[0, (list_start[i]+abs(min_start)) : (list_stop[i] + abs(min_start))] += read_count
-
-
-plt.plot(range(min_start,max_stop+1),context_read_count_deleted[0,:]/np.sum(context_read_count_deleted[0,:]))
-plt.ylabel('Marginal Prob.')
-plt.xlabel('Genomic Context Location')
-plt.title('Deleted Locations')
-plt.savefig('plots/deletion_context_location_prob.pdf')
-plt.clf()
-
-plt.plot(range(min_start,max_stop+1),context_read_count[0,:]/np.sum(context_read_count[0,:]))
-plt.ylabel('Marginal Prob.')
-plt.xlabel('Genomic Context Location')
-plt.title('Deletion Boundary Location')
-plt.savefig('plots/deletion_start_stop_context_location_prob.pdf')
-plt.clf()
-
-plt.plot(range(min_start,max_stop+1),context_read_count_start[0,:]/np.sum(context_read_count_start[0,:]))
-plt.ylabel('Marginal Prob.')
-plt.xlabel('Genomic Context Location')
-plt.title('Deletion Start Location')
-plt.savefig('plots/deletion_start_context_location_prob.pdf')
-plt.clf()
-
-plt.plot(range(min_start,max_stop+1),context_read_count_stop[0,:]/np.sum(context_read_count_stop[0,:]))
-plt.ylabel('Marginal Prob.')
-plt.xlabel('Genomic Context Location')
-plt.title('Deletion Stop Location')
-plt.savefig('plots/deletion_stop_context_location_prob.pdf')
-plt.clf()
+#
+# plt.plot(range(min_start,max_stop+1),context_read_count_deleted[0,:]/np.sum(context_read_count_deleted[0,:]))
+# plt.ylabel('Marginal Prob.')
+# plt.xlabel('Genomic Context Location')
+# plt.title('Deleted Locations')
+# plt.savefig('plots/deletion_context_location_prob.pdf')
+# plt.clf()
+#
+# plt.plot(range(min_start,max_stop+1),context_read_count[0,:]/np.sum(context_read_count[0,:]))
+# plt.ylabel('Marginal Prob.')
+# plt.xlabel('Genomic Context Location')
+# plt.title('Deletion Boundary Location')
+# plt.savefig('plots/deletion_start_stop_context_location_prob.pdf')
+# plt.clf()
+#
+# plt.plot(range(min_start,max_stop+1),context_read_count_start[0,:]/np.sum(context_read_count_start[0,:]))
+# plt.ylabel('Marginal Prob.')
+# plt.xlabel('Genomic Context Location')
+# plt.title('Deletion Start Location')
+# plt.savefig('plots/deletion_start_context_location_prob.pdf')
+# plt.clf()
+#
+# plt.plot(range(min_start,max_stop+1),context_read_count_stop[0,:]/np.sum(context_read_count_stop[0,:]))
+# plt.ylabel('Marginal Prob.')
+# plt.xlabel('Genomic Context Location')
+# plt.title('Deletion Stop Location')
+# plt.savefig('plots/deletion_stop_context_location_prob.pdf')
+# plt.clf()
 
 # print "variation of lengths"
 # print "mean length =", np.dot(dic_del_len,indel_count_matrix_sum) / np.sum(indel_count_matrix_sum)
@@ -146,24 +155,24 @@ plt.clf()
 
 
 # ########### Creat Deletion Marginal Probablity Matrix
-context_probability_matrix = np.zeros((context_len,site_num))
-for indel_index in range(indel_num):
-    #list = dic_del[indel_index]
-    list_start = dic_del_start[indel_index]
-    list_stop = dic_del_stop[indel_index]
-    for site in range(site_num):
-        for i in range(len(list_start)):
-            context_probability_matrix[list_start[i]+abs(min_start):list_stop[i]+abs(min_start),site] += indel_fraction_mutant_matrix[indel_index,site]
-deletion_context_probability_matrix = context_probability_matrix /  np.reshape(np.sum(context_probability_matrix, axis=0), (1, -1))
-pickle.dump(deletion_context_probability_matrix, open('storage/deletion_context_probability_matrix.p', 'wb'))
-
-for site_id in range(5):
-    plt.plot(range(min_start,max_stop+1),deletion_context_probability_matrix[:,site_id])
-    plt.ylabel('Marginal Prob.')
-    plt.xlabel('Genomic Context Location')
-    #plt.title('Deletion Boundary Location')
-    plt.savefig('plots/deletion_context_location_prob_single_site'+ str(site_id) +'.pdf')
-    plt.clf()
+# context_probability_matrix = np.zeros((context_len,site_num))
+# for indel_index in range(indel_num):
+#     #list = dic_del[indel_index]
+#     list_start = dic_del_start[indel_index]
+#     list_stop = dic_del_stop[indel_index]
+#     for site in range(site_num):
+#         for i in range(len(list_start)):
+#             context_probability_matrix[list_start[i]+abs(min_start):list_stop[i]+abs(min_start),site] += indel_fraction_mutant_matrix[indel_index,site]
+# deletion_context_probability_matrix = context_probability_matrix /  np.reshape(np.sum(context_probability_matrix, axis=0), (1, -1))
+# pickle.dump(deletion_context_probability_matrix, open('storage/deletion_context_probability_matrix.p', 'wb'))
+#
+# for site_id in range(5):
+#     plt.plot(range(min_start,max_stop+1),deletion_context_probability_matrix[:,site_id])
+#     plt.ylabel('Marginal Prob.')
+#     plt.xlabel('Genomic Context Location')
+#     #plt.title('Deletion Boundary Location')
+#     plt.savefig('plots/deletion_context_location_prob_single_site'+ str(site_id) +'.pdf')
+#     plt.clf()
 
 # ########### Creat all Genomic context file
 context_genome_dict = {}
@@ -171,7 +180,12 @@ with open('sequence_pam_gene_grna_big_file_donor_genomic_context.csv', 'rb') as 
     spamreader = csv.reader(csvfile, delimiter=' ', quotechar='|')
     row_counter = 0
     for row in spamreader:
-        context_genome_dict[row[0].split(',')[0]]=row[0].split(',')[6]
+        context = row[0].split(',')[6]
+        context = context.replace('a','A')
+        context = context.replace('t','T')
+        context = context.replace('c','C')
+        context = context.replace('g','G')
+        context_genome_dict[row[0].split(',')[0]] = context
 
 counter = 0
 file=open('storage/genomic_context.txt','w')
@@ -184,9 +198,84 @@ print "context size =", len(context_genome_dict[site_name_list[1]+'-'+site_name_
 print "min start = ", min_start
 
 ###########
+
+#### here we find the distribution of boundaries
+# site = 0
+# for site_name in name_genes_grna_unique:
+#     site_name_list = site_name.split('-')
+#     context = context_genome_dict[site_name_list[1] + '-' + site_name_list[2]]
+#     for indel_index in range(indel_num):
+#         list_start = dic_del_start[indel_index]
+#         list_stop = dic_del_stop[indel_index]
+#         for i in range(len(list_start)):
+#             #print list_start[i]+abs(min_start)
+#             if list_start[i]+50 < 99 and list_start[i]+50 >= 1 and list_stop[i]+50 < 99 and list_stop[i]+50 >= 1:
+#
+#                 nuc1 = context[list_start[i]+49]
+#                 nuc2 = context[list_start[i]+50]
+#
+#                 nuc3 = context[list_stop[i]-1+50]
+#                 nuc4 = context[list_stop[i]-1+51]
+#
+#                 random_start = int(np.random.randint(0,99,size=1))
+#                 nuc5 = context[random_start]
+#                 nuc6 = context[random_start+1]
+#
+#                 random_stop = int(np.random.randint(0, 99, size=1))
+#                 nuc7 = context[random_stop]
+#                 nuc8 = context[random_stop+1]
+#
+#                 # boundary_dic[nuc1+nuc2] += indel_fraction_mutant_matrix[indel_index,site]
+#                 # boundary_dic[nuc3+nuc4] += indel_fraction_mutant_matrix[indel_index,site]
+#                 #
+#                 # boundary_dic_control[nuc5+nuc6] += indel_fraction_mutant_matrix[indel_index,site]
+#                 # boundary_dic_control[nuc7+nuc8] += indel_fraction_mutant_matrix[indel_index,site]
+#
+#                 # boundary_dic[nuc1 + nuc2] += indel_fraction_mutant_matrix[indel_index, site]*length_indel_deletion[indel_index]
+#                 # boundary_dic[nuc3 + nuc4] += indel_fraction_mutant_matrix[indel_index, site]*length_indel_deletion[indel_index]
+#                 #
+#                 # boundary_dic_control[nuc5 + nuc6] += indel_fraction_mutant_matrix[indel_index, site]*length_indel_deletion[indel_index]
+#                 # boundary_dic_control[nuc7 + nuc8] += indel_fraction_mutant_matrix[indel_index, site]*length_indel_deletion[indel_index]
+#
+#
+#         # add stop
+#     site += 1
+#
+# print boundary_dic
+#
+# legend_nuc = []
+# vec_to_plot = []
+# vec_to_plot_control = []
+# for nuc1 in ['A', 'C', 'G', 'T']:
+#     for nuc2 in ['A', 'C', 'G', 'T']:
+#         vec_to_plot.append(boundary_dic[nuc1+nuc2])
+#         vec_to_plot_control.append(boundary_dic_control[nuc1+nuc2])
+#         legend_nuc.append(nuc1+nuc2)
+#
+# plt.stem(vec_to_plot/np.sum(vec_to_plot))
+# plt.stem(vec_to_plot_control/np.sum(vec_to_plot_control),'r')
+# plt.ylabel('Prob.')
+# plt.xticks(range(0,16),legend_nuc)
+# plt.legend(['Empirical Distribution','Random Control'],loc=3)
+# plt.savefig('plots/deletion_boundary.pdf')
+# plt.clf()
+
+#####
+
+boundary_dic = {}
+boundary_dic_control = {}
+for nuc1 in ['A', 'C', 'G', 'T']:
+    for nuc2 in ['A', 'C', 'G', 'T']:
+        for nuc3 in ['A', 'C', 'G', 'T']:
+            for nuc4 in ['A', 'C', 'G', 'T']:
+                boundary_dic[nuc1+nuc2+nuc3+nuc4] = 0.
+                boundary_dic_control[nuc1+nuc2+nuc3+nuc4] = 0.
+
+
 site = 0
 for site_name in name_genes_grna_unique:
     site_name_list = site_name.split('-')
+    context = context_genome_dict[site_name_list[1] + '-' + site_name_list[2]]
     for indel_index in range(indel_num):
         list_start = dic_del_start[indel_index]
         list_stop = dic_del_stop[indel_index]
@@ -194,50 +283,22 @@ for site_name in name_genes_grna_unique:
             #print list_start[i]+abs(min_start)
             if list_start[i]+50 < 99 and list_start[i]+50 >= 1 and list_stop[i]+50 < 99 and list_stop[i]+50 >= 1:
 
-                nuc1 = context_genome_dict[site_name_list[1] + '-' + site_name_list[2]][list_start[i]+49]
-                nuc2 = context_genome_dict[site_name_list[1] + '-' + site_name_list[2]][list_start[i]+50]
+                nuc1 = context[list_start[i]+49]
+                nuc2 = context[list_start[i]+50]
+                nuc3 = context[list_stop[i]-1+50]
+                nuc4 = context[list_stop[i]-1+51]
 
-                nuc3 = context_genome_dict[site_name_list[1] + '-' + site_name_list[2]][list_stop[i]+49]
-                nuc4 = context_genome_dict[site_name_list[1] + '-' + site_name_list[2]][list_stop[i]+50]
+                random_start = int(np.random.randint(0,99-list_stop[i]+list_start[i],size=1))
+                nuc5 = context[random_start]
+                nuc6 = context[random_start+1]
+                nuc7 = context[random_start+list_stop[i]-list_start[i]]
+                nuc8 = context[random_start+list_stop[i]-list_start[i]]
 
-                if nuc1 == 'a':
-                    nuc1 = 'A'
-                elif nuc1 == 't':
-                    nuc1 = 'T'
-                elif nuc1 == 'c':
-                    nuc1 = 'C'
-                elif nuc1 == 'g':
-                    nuc1 = 'G'
+                size_dic[list_stop[i]-list_start[i]] += indel_fraction_mutant_matrix[indel_index,site]
+                #print indel_fraction_mutant_matrix[indel_index,site]
 
-                if nuc2 == 'a':
-                    nuc2 = 'A'
-                elif nuc2 == 't':
-                    nuc2 = 'T'
-                elif nuc2 == 'c':
-                    nuc2 = 'C'
-                elif nuc2 == 'g':
-                    nuc2 = 'G'
-
-                if nuc3 == 'a':
-                    nuc3 = 'A'
-                elif nuc3 == 't':
-                    nuc3 = 'T'
-                elif nuc3 == 'c':
-                    nuc3 = 'C'
-                elif nuc3 == 'g':
-                    nuc3 = 'G'
-
-                if nuc4 == 'a':
-                    nuc4 = 'A'
-                elif nuc4 == 't':
-                    nuc4 = 'T'
-                elif nuc4 == 'c':
-                    nuc4 = 'C'
-                elif nuc4 == 'g':
-                    nuc4 = 'G'
-
-                boundary_dic[nuc1+nuc2] += indel_fraction_mutant_matrix[indel_index,site]
-                boundary_dic[nuc3+nuc4] += indel_fraction_mutant_matrix[indel_index, site]
+                boundary_dic[nuc1+nuc2+nuc3+nuc4] += indel_fraction_mutant_matrix[indel_index,site]
+                boundary_dic_control[nuc5+nuc6+nuc7+nuc8] += indel_fraction_mutant_matrix[indel_index,site]
         # add stop
     site += 1
 
@@ -245,17 +306,36 @@ print boundary_dic
 
 legend_nuc = []
 vec_to_plot = []
+vec_to_plot_control = []
 for nuc1 in ['A', 'C', 'G', 'T']:
     for nuc2 in ['A', 'C', 'G', 'T']:
-        vec_to_plot.append(boundary_dic[nuc1+nuc2])
-        legend_nuc.append(nuc1+nuc2)
+        for nuc3 in ['A', 'C', 'G', 'T']:
+            for nuc4 in ['A', 'C', 'G', 'T']:
+                vec_to_plot.append(boundary_dic[nuc1+nuc2+nuc3+nuc4])
+                vec_to_plot_control.append(boundary_dic_control[nuc1+nuc2+nuc3+nuc4])
+                legend_nuc.append(nuc1+nuc2+nuc3+nuc4)
 
-plt.stem(vec_to_plot/np.sum(vec_to_plot))
+aa = vec_to_plot/np.sum(vec_to_plot)
+bb = vec_to_plot_control/np.sum(vec_to_plot_control)
+plt.stem(aa[0:20])
+plt.stem(bb[0:20],'r')
 plt.ylabel('Prob.')
-plt.xticks(range(0,16),legend_nuc)
+plt.xticks(range(0,20),legend_nuc[0:20])
+plt.legend(['Empirical Distribution','Random Control'],loc=3)
 plt.savefig('plots/deletion_boundary.pdf')
 plt.clf()
+###############
 
+size_freq = []
+for i in range(np.size(size_vec)):
+    size_freq.append(size_dic[size_vec[i]])
+
+plt.plot(size_vec,size_freq,'o')
+plt.ylabel('Sum of Fractions')
+plt.xlabel('Length')
+#plt.legend(['Empirical Distribution', 'Random Control'], loc=3)
+plt.savefig('plots/deletion_length_hist.pdf')
+plt.clf()
 
 ###########  Analyzing TT
 

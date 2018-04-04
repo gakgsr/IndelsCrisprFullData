@@ -19,6 +19,16 @@ from sklearn.cluster import AffinityPropagation
 from sklearn.cluster import KMeans
 from sklearn.metrics.cluster import adjusted_rand_score
 
+
+def top_indel_finder(indel_count_matrix,name_indel_type_unique):
+    indel_num,site_num = np.shape(indel_count_matrix)
+    top_indel_type_vector = np.zeros(site_num)
+    for site in range(site_num):
+        if 'I' in name_indel_type_unique[np.argmax(indel_count_matrix[:,site])]:
+            top_indel_type_vector[site] = 1
+    return top_indel_type_vector
+
+
 def jaccard_distance(set1,set2):
   return 1 - float(len(list(set(set1) & set(set2)))) / len(list(set(set1) | set(set2)))
 
@@ -183,9 +193,10 @@ def one_hot_index(nucleotide):
   return nucleotide_array.index(nucleotide)
 
 
-def load_gene_sequence(sequence_file_name, name_genes_grna_unique):
+def load_gene_sequence(sequence_file_name, name_genes_grna_unique,homopolymer_matrix):
   # Create numpy matrix of size len(name_genes_grna_unique) * 23, to store the sequence as one-hot encoded
   sequence_pam_per_gene_grna = np.zeros((len(name_genes_grna_unique), 23, 4), dtype = bool)
+  sequence_pam_homop_per_gene_grna = np.zeros((len(name_genes_grna_unique), 24, 4))
   sequence_genom_context_gene_grna = np.zeros((len(name_genes_grna_unique), 100, 4), dtype=bool)
   # Obtain the grna and PAM sequence corresponding to name_genes_grna_unique
   with open(sequence_file_name) as f:
@@ -198,14 +209,19 @@ def load_gene_sequence(sequence_file_name, name_genes_grna_unique):
         index_in_name_genes_grna_unique = name_genes_grna_unique.index(l[1] + '-' + l[0])
         for i in range(20):
           sequence_pam_per_gene_grna[index_in_name_genes_grna_unique, i, one_hot_index(l[2][i])] = 1
+          sequence_pam_homop_per_gene_grna[index_in_name_genes_grna_unique, i, one_hot_index(l[2][i])] = 1
         for i in range(3):
           sequence_pam_per_gene_grna[index_in_name_genes_grna_unique, 20 + i, one_hot_index(l[3][i])] = 1
+          sequence_pam_homop_per_gene_grna[index_in_name_genes_grna_unique, 20 + i, one_hot_index(l[3][i])] = 1
+
+        sequence_pam_homop_per_gene_grna[index_in_name_genes_grna_unique, 23 , :] = homopolymer_matrix[:,index_in_name_genes_grna_unique]
+
         for i in range(100):
           sequence_genom_context_gene_grna[index_in_name_genes_grna_unique, i, one_hot_index(l[6][i])] = 1
 
   plot_seq_logo(np.mean(sequence_pam_per_gene_grna, axis=0), "input_spacer")
   # Scikit needs only a 2-d matrix as input, so reshape and return
-  return np.reshape(sequence_genom_context_gene_grna, (len(sequence_genom_context_gene_grna), -1)),np.reshape(sequence_pam_per_gene_grna, (len(name_genes_grna_unique), -1)), np.reshape(sequence_pam_per_gene_grna[:, :20, :], (len(name_genes_grna_unique), -1)), np.reshape(sequence_pam_per_gene_grna[:, 20:, :], (len(name_genes_grna_unique), -1))
+  return np.reshape(sequence_genom_context_gene_grna, (len(sequence_genom_context_gene_grna), -1)), np.reshape(sequence_pam_homop_per_gene_grna, (len(sequence_pam_homop_per_gene_grna), -1)),np.reshape(sequence_pam_per_gene_grna, (len(name_genes_grna_unique), -1)), np.reshape(sequence_pam_per_gene_grna[:, :20, :], (len(name_genes_grna_unique), -1)), np.reshape(sequence_pam_per_gene_grna[:, 20:, :], (len(name_genes_grna_unique), -1))
 
 
 def load_gene_sequence_interaction(sequence_file_name, name_genes_grna_unique):
@@ -275,7 +291,7 @@ def load_gene_sequence_k_mer(sequence_file_name, name_genes_grna_unique, k):
 
 
 def perform_logistic_regression(sequence_pam_per_gene_grna, count_insertions_gene_grna_binary, count_deletions_gene_grna_binary, train_index, test_index, ins_coeff, del_coeff, to_plot = False):
-  log_reg = linear_model.LogisticRegression(penalty='l2', C=1)
+  log_reg = linear_model.LogisticRegression(penalty='l2', C=1000)
   #print "----"
   #print "Number of positive testing samples in insertions is %f" % np.sum(count_insertions_gene_grna_binary[test_index])
   #print "Total number of testing samples %f" % np.size(test_index)
@@ -290,7 +306,7 @@ def perform_logistic_regression(sequence_pam_per_gene_grna, count_insertions_gen
     #plt.plot(log_reg.coef_[0, 0:92])
     #plt.savefig('ins_log_coeff.pdf')
     #plt.clf()
-    plot_seq_logo(-log_reg.coef_[0, :], "Insertion_logistic")
+    plot_seq_logo(log_reg.coef_[0, :], "Insertion_logistic")
     #plot_interaction_network(log_reg.coef_[0, 92:], "Insertion_logistic")
 
   #print "Test accuracy score for insertions: %f" % insertions_accuracy
@@ -309,7 +325,7 @@ def perform_logistic_regression(sequence_pam_per_gene_grna, count_insertions_gen
     #plt.plot(log_reg.coef_[0, 0:92])
     #plt.savefig('del_log_coeff.pdf')
     #plt.clf()
-    plot_seq_logo(-log_reg.coef_[0, :], "Deletion_logistic")
+    plot_seq_logo(log_reg.coef_[0, :], "Deletion_logistic")
     #plot_interaction_network(log_reg.coef_[0, 92:], "Deletion_logistic")
   #print log_reg_pred
   #print "Test accuracy score for deletions: %f" % deletions_accuracy
@@ -322,7 +338,7 @@ def cross_validation_model(sequence_pam_per_gene_grna, count_insertions_gene_grn
   total_deletion_avg_accuracy = []
   ins_coeff = []
   del_coeff = []
-  for repeat in range(4):
+  for repeat in range(100):
     #print "repeat ", repeat
     number_of_splits = 3
     fold_valid = KFold(n_splits = number_of_splits, shuffle = True, random_state = repeat)
@@ -412,6 +428,8 @@ indel_prop_matrix = pickle.load(open('storage/indel_prop_matrix_one_patient_per_
 print "loading length_indel ..."
 length_indel_insertion = pickle.load(open('storage/length_indel_insertion.p', 'rb'))
 length_indel_deletion = pickle.load(open('storage/length_indel_deletion.p', 'rb'))
+print "loading homopolymer matrix"
+homopolymer_matrix = pickle.load(open('storage/homopolymer_matrix_w-3:3.p', 'rb'))
 
 
 #indel_set_matrix,jaccard_matrix,unique_patient_per_site_index_list = variation_patients_and_lump(indel_count_matrix,sequence_file_name, name_genes_grna_unique)
@@ -425,16 +443,15 @@ length_indel_deletion = pickle.load(open('storage/length_indel_deletion.p', 'rb'
 
 count_insertions_gene_grna, count_deletions_gene_grna = compute_summary_statistics(name_genes_grna_unique, name_indel_type_unique, indel_count_matrix, indel_prop_matrix)
 
-
-
-sequence_genom_context_gene_grna,sequence_pam_per_gene_grna, sequence_per_gene_grna, pam_per_gene_grna = load_gene_sequence(sequence_file_name, name_genes_grna_unique)
+sequence_genom_context_gene_grna,sequence_pam_homop_per_gene_grna,sequence_pam_per_gene_grna, sequence_per_gene_grna, pam_per_gene_grna = load_gene_sequence(sequence_file_name, name_genes_grna_unique,homopolymer_matrix)
 #sequence_pam_per_gene_grna = load_gene_sequence_interaction(sequence_file_name, name_genes_grna_unique)
+top_indel_vector = top_indel_finder(indel_count_matrix,name_indel_type_unique)
 
-
-print "Using all genomic context"
-cross_validation_model(sequence_genom_context_gene_grna, count_insertions_gene_grna, count_deletions_gene_grna)
-#print "Using both Spacer and PAM"
-#cross_validation_model(sequence_pam_per_gene_grna, count_insertions_gene_grna, count_deletions_gene_grna)
+#print "Using all genomic context"
+#cross_validation_model(sequence_genom_context_gene_grna, count_insertions_gene_grna, count_deletions_gene_grna)
+#cross_validation_model(sequence_genom_context_gene_grna, top_indel_vector, top_indel_vector)
+print "Using both Spacer and PAM"
+cross_validation_model(sequence_pam_homop_per_gene_grna, top_indel_vector, top_indel_vector)
 #print "Using only Spacer"
 #cross_validation_model(sequence_per_gene_grna, count_insertions_gene_grna, count_deletions_gene_grna)
 #print "Using only PAM"

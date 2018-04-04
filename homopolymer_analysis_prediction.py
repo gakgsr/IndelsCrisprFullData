@@ -29,21 +29,15 @@ from math import sqrt
 
 def my_length_finder(indel_count_matrix,length_indel_insertion,length_indel_deletion,consider_length=1):
   indel_num,site_num = np.shape(indel_count_matrix)
-
   prop_insertions_gene_grna = np.zeros(site_num,dtype=float)
   prop_deletions_gene_grna = np.zeros(site_num,dtype=float)
-
   if consider_length ==0:
     length_indel_insertion[length_indel_insertion>0]=1.
     length_indel_deletion[length_indel_deletion>0]=1.
-
-
   indel_fraction_mutant_matrix = indel_count_matrix / np.reshape(np.sum(indel_count_matrix, axis=0), (1, -1))
-
   for site_index in range(site_num):
     prop_insertions_gene_grna[site_index] = np.inner(length_indel_insertion,indel_fraction_mutant_matrix[:,site_index])
     prop_deletions_gene_grna[site_index] = np.inner(length_indel_deletion, indel_fraction_mutant_matrix[:, site_index])
-
   return prop_insertions_gene_grna,prop_deletions_gene_grna
 
 def plot_interaction_network(adj_list,accuracy_list,rmse_list,accu_no_interaction,rmse_no_interaction,coef_list,name_val):
