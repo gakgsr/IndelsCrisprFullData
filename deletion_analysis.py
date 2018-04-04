@@ -55,12 +55,17 @@ dic_del_len = np.zeros(indel_num)
 min_start=0
 max_stop=0
 
-# boundary_dic = {}
-# boundary_dic_control = {}
-# for nuc1 in ['A', 'C', 'G', 'T']:
-#     for nuc2 in ['A', 'C', 'G', 'T']:
-#         boundary_dic[nuc1+nuc2] = 0.
-#         boundary_dic_control[nuc1+nuc2] = 0.
+boundary_dic = {}
+boundary_dic_control = {}
+for nuc1 in ['A', 'C', 'G', 'T']:
+    for nuc2 in ['A', 'C', 'G', 'T']:
+        boundary_dic[nuc1+nuc2] = 0.
+
+max_repeat = 10
+for repeat in range(10):
+    for nuc1 in ['A', 'C', 'G', 'T']:
+        for nuc2 in ['A', 'C', 'G', 'T']:
+            boundary_dic_control[repeat , nuc1 + nuc2] = 0.
 
 
 size_dic = {}
@@ -199,79 +204,7 @@ print "min start = ", min_start
 
 ###########
 
-#### here we find the distribution of boundaries
-# site = 0
-# for site_name in name_genes_grna_unique:
-#     site_name_list = site_name.split('-')
-#     context = context_genome_dict[site_name_list[1] + '-' + site_name_list[2]]
-#     for indel_index in range(indel_num):
-#         list_start = dic_del_start[indel_index]
-#         list_stop = dic_del_stop[indel_index]
-#         for i in range(len(list_start)):
-#             #print list_start[i]+abs(min_start)
-#             if list_start[i]+50 < 99 and list_start[i]+50 >= 1 and list_stop[i]+50 < 99 and list_stop[i]+50 >= 1:
-#
-#                 nuc1 = context[list_start[i]+49]
-#                 nuc2 = context[list_start[i]+50]
-#
-#                 nuc3 = context[list_stop[i]-1+50]
-#                 nuc4 = context[list_stop[i]-1+51]
-#
-#                 random_start = int(np.random.randint(0,99,size=1))
-#                 nuc5 = context[random_start]
-#                 nuc6 = context[random_start+1]
-#
-#                 random_stop = int(np.random.randint(0, 99, size=1))
-#                 nuc7 = context[random_stop]
-#                 nuc8 = context[random_stop+1]
-#
-#                 # boundary_dic[nuc1+nuc2] += indel_fraction_mutant_matrix[indel_index,site]
-#                 # boundary_dic[nuc3+nuc4] += indel_fraction_mutant_matrix[indel_index,site]
-#                 #
-#                 # boundary_dic_control[nuc5+nuc6] += indel_fraction_mutant_matrix[indel_index,site]
-#                 # boundary_dic_control[nuc7+nuc8] += indel_fraction_mutant_matrix[indel_index,site]
-#
-#                 # boundary_dic[nuc1 + nuc2] += indel_fraction_mutant_matrix[indel_index, site]*length_indel_deletion[indel_index]
-#                 # boundary_dic[nuc3 + nuc4] += indel_fraction_mutant_matrix[indel_index, site]*length_indel_deletion[indel_index]
-#                 #
-#                 # boundary_dic_control[nuc5 + nuc6] += indel_fraction_mutant_matrix[indel_index, site]*length_indel_deletion[indel_index]
-#                 # boundary_dic_control[nuc7 + nuc8] += indel_fraction_mutant_matrix[indel_index, site]*length_indel_deletion[indel_index]
-#
-#
-#         # add stop
-#     site += 1
-#
-# print boundary_dic
-#
-# legend_nuc = []
-# vec_to_plot = []
-# vec_to_plot_control = []
-# for nuc1 in ['A', 'C', 'G', 'T']:
-#     for nuc2 in ['A', 'C', 'G', 'T']:
-#         vec_to_plot.append(boundary_dic[nuc1+nuc2])
-#         vec_to_plot_control.append(boundary_dic_control[nuc1+nuc2])
-#         legend_nuc.append(nuc1+nuc2)
-#
-# plt.stem(vec_to_plot/np.sum(vec_to_plot))
-# plt.stem(vec_to_plot_control/np.sum(vec_to_plot_control),'r')
-# plt.ylabel('Prob.')
-# plt.xticks(range(0,16),legend_nuc)
-# plt.legend(['Empirical Distribution','Random Control'],loc=3)
-# plt.savefig('plots/deletion_boundary.pdf')
-# plt.clf()
-
-#####
-
-boundary_dic = {}
-boundary_dic_control = {}
-for nuc1 in ['A', 'C', 'G', 'T']:
-    for nuc2 in ['A', 'C', 'G', 'T']:
-        for nuc3 in ['A', 'C', 'G', 'T']:
-            for nuc4 in ['A', 'C', 'G', 'T']:
-                boundary_dic[nuc1+nuc2+nuc3+nuc4] = 0.
-                boundary_dic_control[nuc1+nuc2+nuc3+nuc4] = 0.
-
-
+### here we find the distribution of boundaries
 site = 0
 for site_name in name_genes_grna_unique:
     site_name_list = site_name.split('-')
@@ -285,20 +218,30 @@ for site_name in name_genes_grna_unique:
 
                 nuc1 = context[list_start[i]+49]
                 nuc2 = context[list_start[i]+50]
+
                 nuc3 = context[list_stop[i]-1+50]
                 nuc4 = context[list_stop[i]-1+51]
 
-                random_start = int(np.random.randint(0,99-list_stop[i]+list_start[i],size=1))
-                nuc5 = context[random_start]
-                nuc6 = context[random_start+1]
-                nuc7 = context[random_start+list_stop[i]-list_start[i]]
-                nuc8 = context[random_start+list_stop[i]-list_start[i]]
+                boundary_dic[nuc1 + nuc2] += indel_fraction_mutant_matrix[indel_index, site]
+                boundary_dic[nuc3 + nuc4] += indel_fraction_mutant_matrix[indel_index, site]
 
-                size_dic[list_stop[i]-list_start[i]] += indel_fraction_mutant_matrix[indel_index,site]
-                #print indel_fraction_mutant_matrix[indel_index,site]
+                for repeat in range(max_repeat):
+                    random_start = int(np.random.randint(0,99,size=1))
+                    nuc5 = context[random_start]
+                    nuc6 = context[random_start+1]
+                    random_stop = int(np.random.randint(0, 99, size=1))
+                    nuc7 = context[random_stop]
+                    nuc8 = context[random_stop+1]
+                    boundary_dic_control[repeat,nuc5+nuc6] += indel_fraction_mutant_matrix[indel_index,site]
+                    boundary_dic_control[repeat,nuc7+nuc8] += indel_fraction_mutant_matrix[indel_index,site]
 
-                boundary_dic[nuc1+nuc2+nuc3+nuc4] += indel_fraction_mutant_matrix[indel_index,site]
-                boundary_dic_control[nuc5+nuc6+nuc7+nuc8] += indel_fraction_mutant_matrix[indel_index,site]
+                # boundary_dic[nuc1 + nuc2] += indel_fraction_mutant_matrix[indel_index, site]*length_indel_deletion[indel_index]
+                # boundary_dic[nuc3 + nuc4] += indel_fraction_mutant_matrix[indel_index, site]*length_indel_deletion[indel_index]
+                #
+                # boundary_dic_control[nuc5 + nuc6] += indel_fraction_mutant_matrix[indel_index, site]*length_indel_deletion[indel_index]
+                # boundary_dic_control[nuc7 + nuc8] += indel_fraction_mutant_matrix[indel_index, site]*length_indel_deletion[indel_index]
+
+
         # add stop
     site += 1
 
@@ -307,35 +250,107 @@ print boundary_dic
 legend_nuc = []
 vec_to_plot = []
 vec_to_plot_control = []
+for repeat in range(max_repeat):
+    vec_to_plot_control.append([])
 for nuc1 in ['A', 'C', 'G', 'T']:
     for nuc2 in ['A', 'C', 'G', 'T']:
-        for nuc3 in ['A', 'C', 'G', 'T']:
-            for nuc4 in ['A', 'C', 'G', 'T']:
-                vec_to_plot.append(boundary_dic[nuc1+nuc2+nuc3+nuc4])
-                vec_to_plot_control.append(boundary_dic_control[nuc1+nuc2+nuc3+nuc4])
-                legend_nuc.append(nuc1+nuc2+nuc3+nuc4)
+        vec_to_plot.append(boundary_dic[nuc1+nuc2])
+        legend_nuc.append(nuc1+nuc2)
 
-aa = vec_to_plot/np.sum(vec_to_plot)
-bb = vec_to_plot_control/np.sum(vec_to_plot_control)
-plt.stem(aa[0:20])
-plt.stem(bb[0:20],'r')
+for repeat in range(max_repeat):
+    for nuc1 in ['A', 'C', 'G', 'T']:
+        for nuc2 in ['A', 'C', 'G', 'T']:
+            vec_to_plot_control[repeat].append(boundary_dic_control[repeat,nuc1 + nuc2])
+
+vec_to_plot_control = np.asarray(vec_to_plot_control)
+vec_to_plot_control = vec_to_plot_control / np.reshape(np.sum(vec_to_plot_control, axis=1), (-1, 1))
+
+plt.stem(range(0,16),vec_to_plot/np.sum(vec_to_plot))
+plt.errorbar(range(0,16),np.mean(vec_to_plot_control,axis=0) , yerr = np.std(vec_to_plot_control,axis=0),color='r')
+#plt.stem(vec_to_plot_control/np.sum(vec_to_plot_control),'r')
 plt.ylabel('Prob.')
-plt.xticks(range(0,20),legend_nuc[0:20])
+plt.xticks(range(0,16),legend_nuc)
 plt.legend(['Empirical Distribution','Random Control'],loc=3)
 plt.savefig('plots/deletion_boundary.pdf')
 plt.clf()
-###############
 
-size_freq = []
-for i in range(np.size(size_vec)):
-    size_freq.append(size_dic[size_vec[i]])
-
-plt.plot(size_vec,size_freq,'o')
-plt.ylabel('Sum of Fractions')
-plt.xlabel('Length')
-#plt.legend(['Empirical Distribution', 'Random Control'], loc=3)
-plt.savefig('plots/deletion_length_hist.pdf')
-plt.clf()
+# #####
+#
+# boundary_dic = {}
+# boundary_dic_control = {}
+# for nuc1 in ['A', 'C', 'G', 'T']:
+#     for nuc2 in ['A', 'C', 'G', 'T']:
+#         for nuc3 in ['A', 'C', 'G', 'T']:
+#             for nuc4 in ['A', 'C', 'G', 'T']:
+#                 boundary_dic[nuc1+nuc2+nuc3+nuc4] = 0.
+#                 boundary_dic_control[nuc1+nuc2+nuc3+nuc4] = 0.
+#
+#
+# site = 0
+# for site_name in name_genes_grna_unique:
+#     site_name_list = site_name.split('-')
+#     context = context_genome_dict[site_name_list[1] + '-' + site_name_list[2]]
+#     for indel_index in range(indel_num):
+#         list_start = dic_del_start[indel_index]
+#         list_stop = dic_del_stop[indel_index]
+#         for i in range(len(list_start)):
+#             #print list_start[i]+abs(min_start)
+#             if list_start[i]+50 < 99 and list_start[i]+50 >= 1 and list_stop[i]+50 < 99 and list_stop[i]+50 >= 1:
+#
+#                 nuc1 = context[list_start[i]+49]
+#                 nuc2 = context[list_start[i]+50]
+#                 nuc3 = context[list_stop[i]-1+50]
+#                 nuc4 = context[list_stop[i]-1+51]
+#
+#                 random_start = int(np.random.randint(0,99-list_stop[i]+list_start[i],size=1))
+#                 nuc5 = context[random_start]
+#                 nuc6 = context[random_start+1]
+#                 nuc7 = context[random_start+list_stop[i]-list_start[i]]
+#                 nuc8 = context[random_start+list_stop[i]-list_start[i]]
+#
+#                 size_dic[list_stop[i]-list_start[i]] += indel_fraction_mutant_matrix[indel_index,site]
+#                 #print indel_fraction_mutant_matrix[indel_index,site]
+#
+#                 boundary_dic[nuc1+nuc2+nuc3+nuc4] += indel_fraction_mutant_matrix[indel_index,site]
+#                 boundary_dic_control[nuc5+nuc6+nuc7+nuc8] += indel_fraction_mutant_matrix[indel_index,site]
+#         # add stop
+#     site += 1
+#
+# print boundary_dic
+#
+# legend_nuc = []
+# vec_to_plot = []
+# vec_to_plot_control = []
+# for nuc1 in ['A', 'C', 'G', 'T']:
+#     for nuc2 in ['A', 'C', 'G', 'T']:
+#         for nuc3 in ['A', 'C', 'G', 'T']:
+#             for nuc4 in ['A', 'C', 'G', 'T']:
+#                 vec_to_plot.append(boundary_dic[nuc1+nuc2+nuc3+nuc4])
+#                 vec_to_plot_control.append(boundary_dic_control[nuc1+nuc2+nuc3+nuc4])
+#                 legend_nuc.append(nuc1+nuc2+nuc3+nuc4)
+#
+# aa = vec_to_plot/np.sum(vec_to_plot)
+# bb = vec_to_plot_control/np.sum(vec_to_plot_control)
+# plt.stem(aa[0:20])
+# plt.stem(bb[0:20],'r')
+# plt.ylabel('Prob.')
+# plt.xticks(range(0,20),legend_nuc[0:20])
+# plt.legend(['Empirical Distribution','Random Control'],loc=3)
+# plt.savefig('plots/deletion_boundary.pdf')
+# plt.clf()
+# # ###############
+#
+# # plottign the length of deletions
+# size_freq = []
+# for i in range(np.size(size_vec)):
+#     size_freq.append(size_dic[size_vec[i]])
+#
+# plt.plot(size_vec,size_freq,'o')
+# plt.ylabel('Sum of Fractions')
+# plt.xlabel('Length')
+# #plt.legend(['Empirical Distribution', 'Random Control'], loc=3)
+# plt.savefig('plots/deletion_length_hist.pdf')
+# plt.clf()
 
 ###########  Analyzing TT
 

@@ -18,6 +18,7 @@ from operator import itemgetter
 from sklearn.cluster import AffinityPropagation
 from sklearn.cluster import KMeans
 from sklearn.metrics.cluster import adjusted_rand_score
+from sklearn.feature_selection import f_regression
 
 
 def top_indel_finder(indel_count_matrix,name_indel_type_unique):
@@ -306,7 +307,11 @@ def perform_logistic_regression(sequence_pam_per_gene_grna, count_insertions_gen
     #plt.plot(log_reg.coef_[0, 0:92])
     #plt.savefig('ins_log_coeff.pdf')
     #plt.clf()
+    pvalue_vec = f_regression(sequence_pam_per_gene_grna[test_index], log_reg_pred)[1]
+    plot_seq_logo(-np.log10(pvalue_vec), "Insertion_logistic_pvalue")
+    print -np.log10(pvalue_vec)[-4:]
     plot_seq_logo(log_reg.coef_[0, :], "Insertion_logistic")
+
     #plot_interaction_network(log_reg.coef_[0, 92:], "Insertion_logistic")
 
   #print "Test accuracy score for insertions: %f" % insertions_accuracy
@@ -325,7 +330,10 @@ def perform_logistic_regression(sequence_pam_per_gene_grna, count_insertions_gen
     #plt.plot(log_reg.coef_[0, 0:92])
     #plt.savefig('del_log_coeff.pdf')
     #plt.clf()
+    pvalue_vec = f_regression(sequence_pam_per_gene_grna[test_index], log_reg_pred)[1]
+    plot_seq_logo(-np.log10(pvalue_vec), "Deletion_logistic_pvalue")
     plot_seq_logo(log_reg.coef_[0, :], "Deletion_logistic")
+    print -np.log10(pvalue_vec)[-4:]
     #plot_interaction_network(log_reg.coef_[0, 92:], "Deletion_logistic")
   #print log_reg_pred
   #print "Test accuracy score for deletions: %f" % deletions_accuracy
