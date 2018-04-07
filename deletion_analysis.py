@@ -226,17 +226,23 @@ for site_name in name_genes_grna_unique:
                 # boundary_dic[nuc1 + nuc2] += indel_fraction_mutant_matrix[indel_index, site]
                 # boundary_dic[nuc3 + nuc4] += indel_fraction_mutant_matrix[indel_index, site]
 
-                # boundary correlation
-                boundary_dic[nuc2 + nuc3] += indel_fraction_mutant_matrix[indel_index, site]
 
-                for repeat in range(max_repeat):
+                # alignment correction
+                if nuc1!=nuc2 and nuc3!=nuc4:
+                    # boundary correlation
+                    boundary_dic[nuc1 + nuc4] += indel_fraction_mutant_matrix[indel_index, site]
+                    repeat = 0
+                    while repeat<max_repeat:
+                        ## boundary correlation
+                        random_start = int(np.random.randint(0, 99-(list_stop[i] - list_start[i]+1), size=1))
+                        nuc5 = context[random_start]
+                        nuc8 = context[random_start + list_stop[i] - list_start[i]+1]
+                        if nuc5!=context[random_start+1] and nuc8!=context[random_start + list_stop[i] - list_start[i]]:
+                            boundary_dic_control[repeat, nuc5 + nuc8] += indel_fraction_mutant_matrix[indel_index, site]
+                            repeat += 1
 
-                    ## boundat correlation
-                    random_start = int(np.random.randint(0, 99-(list_stop[i] - list_start[i]-1), size=1))
-                    nuc5 = context[random_start]
-                    nuc8 = context[random_start + list_stop[i] - list_start[i]-1]
-                    boundary_dic_control[repeat, nuc5 + nuc8] += indel_fraction_mutant_matrix[indel_index, site]
 
+                #for repeat in range(max_repeat):
                     ### boundary
                     # random_start = int(np.random.randint(0,99,size=1))
                     # nuc5 = context[random_start]
@@ -283,7 +289,7 @@ plt.errorbar(range(0,16),np.mean(vec_to_plot_control,axis=0) , yerr = np.std(vec
 plt.ylabel('Prob.')
 plt.xticks(range(0,16),legend_nuc)
 plt.legend(['Empirical Distribution','Random Control'],loc=3)
-plt.savefig('plots/deletion_boundary_correlation_in.pdf')
+plt.savefig('plots/deletion_boundary_correlation_out_align_corrected.pdf')
 plt.clf()
 
 # #####
@@ -352,17 +358,17 @@ plt.clf()
 # plt.clf()
 # # ###############
 #
-# plottign the length of deletions
-size_freq = []
-for i in range(np.size(size_vec)):
-    size_freq.append(size_dic[size_vec[i]])
-
-plt.plot(size_vec,size_freq,'o')
-plt.ylabel('Sum of Fractions')
-plt.xlabel('Length')
-#plt.legend(['Empirical Distribution', 'Random Control'], loc=3)
-plt.savefig('plots/deletion_length_hist.pdf')
-plt.clf()
+# # plottign the length of deletions
+# size_freq = []
+# for i in range(np.size(size_vec)):
+#     size_freq.append(size_dic[size_vec[i]])
+#
+# plt.plot(size_vec,size_freq,'o')
+# plt.ylabel('Sum of Fractions')
+# plt.xlabel('Length')
+# #plt.legend(['Empirical Distribution', 'Random Control'], loc=3)
+# plt.savefig('plots/deletion_length_hist.pdf')
+# plt.clf()
 
 ###########  Analyzing TT
 

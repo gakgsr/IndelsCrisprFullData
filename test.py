@@ -74,24 +74,49 @@ def longest_substring_passing_cutsite(strng,character):
     return longest
 
 
-# print "loading name_genes_grna_unique ..."
-# name_genes_grna_unique = pickle.load(open('storage/name_genes_grna_unique_one_patient_per_site.p', 'rb'))
-# print "loading name_indel_type_unique ..."
-# name_indel_type_unique = pickle.load(open('storage/name_indel_type_unique.p', 'rb'))
-# print "loading indel_count_matrix ..."
-# indel_count_matrix = pickle.load(open('storage/indel_count_matrix_one_patient_per_site.p', 'rb'))
-# print "loading indel_prop_matrix ..."
-# indel_prop_matrix = pickle.load(open('storage/indel_prop_matrix_one_patient_per_site.p', 'rb'))
-# print "loading length_indel ..."
-# length_indel_insertion = pickle.load(open('storage/length_indel_insertion.p', 'rb'))
-# length_indel_deletion = pickle.load(open('storage/length_indel_deletion.p', 'rb'))
+print "loading name_genes_grna_unique ..."
+name_genes_grna_unique = pickle.load(open('storage/name_genes_grna_unique_one_patient_per_site.p', 'rb'))
+print "loading name_indel_type_unique ..."
+name_indel_type_unique = pickle.load(open('storage/name_indel_type_unique.p', 'rb'))
+print "loading indel_count_matrix ..."
+indel_count_matrix = pickle.load(open('storage/indel_count_matrix_one_patient_per_site.p', 'rb'))
+print "loading indel_prop_matrix ..."
+indel_prop_matrix = pickle.load(open('storage/indel_prop_matrix_one_patient_per_site.p', 'rb'))
+print "loading length_indel ..."
+length_indel_insertion = pickle.load(open('storage/length_indel_insertion.p', 'rb'))
+length_indel_deletion = pickle.load(open('storage/length_indel_deletion.p', 'rb'))
 
 
-X = np.random.random((10,10))
-beta = np.random.random(10)
-y = np.dot(X,beta)
-print f_regression(X,y)[1]
+intron_exon = pickle.load(open('storage/intron_exon_status.pkl', 'rb'))
 
+
+location_dict = {}
+with open('sequence_pam_gene_grna_big_file_donor_genomic_context.csv', 'rb') as csvfile:
+    spamreader = csv.reader(csvfile, delimiter=' ', quotechar='|')
+    row_counter = 0
+    for row in spamreader:
+        location_dict[row[0].split(',')[0]]=row[0].split(',')[4]
+
+intron_exon_label_vec = []
+site_count = 0
+for site_name in name_genes_grna_unique:
+    site_name_list = site_name.split('-')
+    location = location_dict[site_name_list[1] + '-' + site_name_list[2]]
+    print location
+    print intron_exon[location]
+    intron_exon_label_vec.append(int(intron_exon[location][16]))
+
+intron_exon_label_vec = np.asarray(intron_exon_label_vec)
+print intron_exon_label_vec
+print 'number of nongens', np.sum(intron_exon_label_vec==0)
+print 'number of Introns', np.sum(intron_exon_label_vec==1)
+print 'number of Exons', np.sum(intron_exon_label_vec==2)
+
+
+# X = np.random.random((10,10))
+# beta = np.random.random(10)
+# y = np.dot(X,beta)
+# print f_regression(X,y)[1]
 
 #print longest_substring_passing_cutsite('AATT','T')
 
