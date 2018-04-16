@@ -30,3 +30,13 @@ import glob
 from huffman import HuffmanCoding
 from sklearn.feature_selection import f_regression
 import random
+
+
+
+file = open('/Users/amirali/Projects/refGene.txt','r')
+for line in file:
+    # [2] is chromosome id [3] is strand
+    print line.split('\t')[3]+line.split('\t')[2]
+    # [4] is chromosome id [5] is strand
+    print line.split('\t')[2]
+

@@ -19,6 +19,7 @@ from sklearn.cluster import AffinityPropagation
 from sklearn.cluster import KMeans
 from sklearn.metrics.cluster import adjusted_rand_score
 from sklearn.feature_selection import f_regression
+from sklearn.feature_selection import chi2
 
 
 def top_indel_finder(indel_count_matrix,name_indel_type_unique):
@@ -307,7 +308,8 @@ def perform_logistic_regression(sequence_pam_per_gene_grna, count_insertions_gen
     #plt.plot(log_reg.coef_[0, 0:92])
     #plt.savefig('ins_log_coeff.pdf')
     #plt.clf()
-    pvalue_vec = f_regression(sequence_pam_per_gene_grna[test_index], log_reg_pred)[1]
+    #pvalue_vec = f_regression(sequence_pam_per_gene_grna[test_index], log_reg_pred)[1]
+    scores, pvalue_vec = chi2(sequence_pam_per_gene_grna[test_index], log_reg_pred)
     plot_seq_logo(-np.log10(pvalue_vec), "Insertion_logistic_pvalue")
     print -np.log10(pvalue_vec)[-4:]
     plot_seq_logo(log_reg.coef_[0, :], "Insertion_logistic")
@@ -330,7 +332,8 @@ def perform_logistic_regression(sequence_pam_per_gene_grna, count_insertions_gen
     #plt.plot(log_reg.coef_[0, 0:92])
     #plt.savefig('del_log_coeff.pdf')
     #plt.clf()
-    pvalue_vec = f_regression(sequence_pam_per_gene_grna[test_index], log_reg_pred)[1]
+    #pvalue_vec = f_regression(sequence_pam_per_gene_grna[test_index], log_reg_pred)[1]
+    scores, pvalue_vec = chi2(sequence_pam_per_gene_grna[test_index], log_reg_pred)
     plot_seq_logo(-np.log10(pvalue_vec), "Deletion_logistic_pvalue")
     plot_seq_logo(log_reg.coef_[0, :], "Deletion_logistic")
     print -np.log10(pvalue_vec)[-4:]
@@ -459,7 +462,9 @@ top_indel_vector = top_indel_finder(indel_count_matrix,name_indel_type_unique)
 #cross_validation_model(sequence_genom_context_gene_grna, count_insertions_gene_grna, count_deletions_gene_grna)
 #cross_validation_model(sequence_genom_context_gene_grna, top_indel_vector, top_indel_vector)
 print "Using both Spacer and PAM"
-cross_validation_model(sequence_pam_homop_per_gene_grna, top_indel_vector, top_indel_vector)
+#cross_validation_model(sequence_pam_homop_per_gene_grna, top_indel_vector, top_indel_vector)
+print count_insertions_gene_grna
+cross_validation_model(sequence_pam_homop_per_gene_grna, count_insertions_gene_grna, count_deletions_gene_grna)
 #print "Using only Spacer"
 #cross_validation_model(sequence_per_gene_grna, count_insertions_gene_grna, count_deletions_gene_grna)
 #print "Using only PAM"
