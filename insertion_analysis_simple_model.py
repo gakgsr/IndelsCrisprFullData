@@ -122,6 +122,36 @@ for repeat in range(10):
             boundary_dic_control[repeat , nuc1 + nuc2] = 0.
 
 
+
+nAA = 0
+nAT = 0
+nAC = 0
+nAG = 0
+
+nTA = 0
+nTT = 0
+nTC = 0
+nTG = 0
+
+nCA = 0
+nCT = 0
+nCC = 0
+nCG = 0
+
+nGA = 0
+nGT = 0
+nGC = 0
+nGG = 0
+
+nuc_dic = {}
+nuc_dic['A'] = 0
+nuc_dic['T'] = 1
+nuc_dic['C'] = 2
+nuc_dic['G'] = 3
+nXXL = np.zeros((4,4))
+nXXR = np.zeros((4,4))
+
+
 print ins_dic
 for key, indel_seq in ins_dic.iteritems():
     indel_index = key[0]
@@ -130,49 +160,27 @@ for key, indel_seq in ins_dic.iteritems():
     context = simple_context_genome_dict[site_index]
     nuc1 = context[49+insertion_site]
     nuc2 = context[50+insertion_site]
-    if indel_seq == 'A':
-        boundary_dic_A[nuc1+nuc2] += indel_fraction_mutant_matrix[indel_index,site_index]
-    elif indel_seq =='T':
-        boundary_dic_T[nuc1+nuc2] += indel_fraction_mutant_matrix[indel_index,site_index]
-    elif indel_seq == 'C':
-        boundary_dic_C[nuc1+nuc2] += indel_fraction_mutant_matrix[indel_index, site_index]
-    elif indel_seq == 'G':
-        boundary_dic_G[nuc1+nuc2] += indel_fraction_mutant_matrix[indel_index, site_index]
+    if len(indel_seq) == 1:
+        nXXL[int(nuc_dic[indel_seq]),int(nuc_dic[nuc1])] += indel_fraction_mutant_matrix[indel_index,site_index]
+        nXXR[int(nuc_dic[indel_seq]), int(nuc_dic[nuc2])] += indel_fraction_mutant_matrix[indel_index, site_index]
 
+#print nXXR
+#print nXXL
 
-vecA=[]
-vecT=[]
-vecC=[]
-vecG=[]
-legend_nuc = []
-for nuc1 in ['A', 'C', 'G', 'T']:
-    for nuc2 in ['A', 'C', 'G', 'T']:
-        vecA.append(boundary_dic_A[nuc1+nuc2])
-        vecT.append(boundary_dic_T[nuc1+nuc2])
-        vecC.append(boundary_dic_C[nuc1+nuc2])
-        vecG.append(boundary_dic_G[nuc1+nuc2])
-        legend_nuc.append(nuc1 + nuc2)
+nXX = nXXR
+PP = np.zeros((4,4))
 
+for i in range(4):
+    PM = np.ones((3,3))
+    PM[0,0] +=  nXX[i,3] / nXX[i,0]
+    PM[1,1] +=  nXX[i,3] / nXX[i,1]
+    PM[2,2] +=  nXX[i,3] / nXX[i,2]
 
-for i in range(len(vecA)):
-    sumi = vecA[i] + vecT[i]+ vecC[i] + vecG[i]
-    vecA[i] = vecA[i] / sumi
-    vecT[i] = vecT[i] / sumi
-    vecC[i] = vecC[i] / sumi
-    vecG[i] = vecG[i] / sumi
+    row = np.linalg.solve(PM, np.ones(3))
 
-# plt.bar(np.arange(16),vecA/np.sum(vecA),color = 'b', width = 0.20)
-# plt.bar(np.arange(16)+0.2,vecT/np.sum(vecT),color = 'r', width = 0.20)
-# plt.bar(np.arange(16)+0.4,vecC/np.sum(vecC),color = 'g', width = 0.20)
-# plt.bar(np.arange(16)+0.6,vecG/np.sum(vecG),color = 'k', width = 0.20)
+    for j in range(3):
+        PP[i,j] = row[j]
 
-plt.bar(np.arange(16),vecA,color = 'b', width = 0.20)
-plt.bar(np.arange(16)+0.2,vecT,color = 'r', width = 0.20)
-plt.bar(np.arange(16)+0.4,vecC,color = 'g', width = 0.20)
-plt.bar(np.arange(16)+0.6,vecG,color = 'k', width = 0.20)
+    PP[i,3] = 1 - np.sum(row)
 
-plt.ylabel('Prob.')
-plt.xticks(range(0,16),legend_nuc[0:16])
-plt.legend(['A','T','C','G'],loc=1)
-plt.savefig('plots/insertion_boundary_other_normalziation.pdf')
-plt.clf()
+print PP

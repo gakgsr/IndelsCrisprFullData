@@ -383,6 +383,25 @@ print "loading homopolymer matrix"
 homopolymer_matrix = pickle.load(open('storage/homopolymer_matrix_w-3:3.p', 'rb'))
 
 
+length_one_counter = 0
+deletion_counter = 0
+homo3_counter = 0
+LL = 0.
+for i in range(len(name_genes_grna_unique)):
+    if 3 in homopolymer_matrix[:,i]:
+        homo3_counter += 1
+        inde_type = name_indel_type_unique[np.argsort(indel_count_matrix[:,i])[-1]]
+        if 'D' in inde_type:
+            deletion_counter += 1
+            if int(inde_type.strip('D').split(':')[1]) != 2 and int(inde_type.strip('D').split(':')[1]) != 1:
+                length_one_counter+=1
+                LL += int(inde_type.strip('D').split(':')[1])
+                print inde_type
+
+print "Number of sites with a deletion of length 1:", length_one_counter
+print "Total number of sites with top-deletion:", deletion_counter
+print "Total homo counter:", homo3_counter
+print LL/length_one_counter
 
 #count_insertions_gene_grna, count_deletions_gene_grna = compute_summary_statistics(name_genes_grna_unique, name_indel_type_unique, indel_count_matrix, indel_prop_matrix)
 #prop_insertions_gene_grna, prop_deletions_gene_grna = avg_length_pred()
@@ -392,10 +411,6 @@ fraction_insertions, fraction_deletions = fraction_of_deletion_insertion(indel_c
 exp_insertion_length, exp_deletion_length = expected_deletion_insertion_length(indel_count_matrix,length_indel_insertion,length_indel_deletion)
 eff_vec = eff_vec_finder(indel_count_matrix,name_genes_grna_unique)
 intron_exon_label_vec = coding_region_finder(name_genes_grna_unique)
-
-print "number of exons", np.sum(intron_exon_label_vec==2)
-print "number of introns", np.sum(intron_exon_label_vec==1)
-print "number of nongenes", np.sum(intron_exon_label_vec==0)
 
 sequence_genom_context_gene_grna, sequence_pam_repeat_per_gene_grna, sequence_pam_coding_gccontent_per_gene_grna, sequence_pam_homop_per_gene_grna , sequence_pam_per_gene_grna, sequence_per_gene_grna, pam_per_gene_grna = load_gene_sequence(sequence_file_name, name_genes_grna_unique,homopolymer_matrix,intron_exon_label_vec)
 

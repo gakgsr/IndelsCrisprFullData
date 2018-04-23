@@ -89,7 +89,7 @@ for repeat in range(max_repeat):
         for nuc2 in ['A', 'C', 'G', 'T']:
             boundary_dic_control[repeat , nuc1 + nuc2] = 0.
 
-
+center_dic = {}
 size_dic = {}
 size_coding_dic = {}
 size_noncoding_dic = {}
@@ -123,7 +123,9 @@ for indel_index in range(indel_num):
             size_dic[size] = 0
             size_coding_dic[size] = 0
             size_noncoding_dic[size] = 0
+            center_dic[int(round((start + stop)/2.))] = 0
             size_vec.append(size)
+
 
     counter = counter + 1
 
@@ -228,105 +230,111 @@ print "min start = ", min_start
 
 ###########
 
-# ### here we find the distribution of boundaries
-#
-# for site, site_name in enumerate(name_genes_grna_unique):
-#     site_name_list = site_name.split('-')
-#     context = context_genome_dict[site_name_list[1] + '-' + site_name_list[2]]
-#     for indel_index in range(indel_num):
-#         list_start = dic_del_start[indel_index]
-#         list_stop = dic_del_stop[indel_index]
-#         for i in range(len(list_start)):
-#
-#             size_dic[list_stop[i] - list_start[i]] += indel_fraction_mutant_matrix[indel_index, site]
-#
-#             #print list_start[i]+abs(min_start)
-#             if list_start[i]+50 < 99 and list_start[i]+50 >= 1 and list_stop[i]+50 < 99 and list_stop[i]+50 >= 1:
-#
-#                 nuc1 = context[list_start[i]+49]
-#                 nuc2 = context[list_start[i]+50]
-#
-#                 nuc3 = context[list_stop[i]-1+50]
-#                 nuc4 = context[list_stop[i]-1+51]
-#
-#                 # boundary correlation
-#                 if nuc1!=nuc2 and nuc3!=nuc4: # alignment correction
-#                     boundary_dic[nuc1 + nuc4] += indel_fraction_mutant_matrix[indel_index, site]
-#                     repeat = 0
-#                     while repeat<max_repeat:
-#                         ## boundary correlation
-#                         # this is uniform random
-#                         #random_start = int(np.random.randint(0, 99-(list_stop[i] - list_start[i]+1), size=1))
-#                         #nuc5 = context[random_start]
-#                         #nuc8 = context[random_start + list_stop[i] - list_start[i]+1]
-#
-#                         # this is expoential
-#                         random_start = 50 - int(np.random.exponential(4.5))/2
-#                         random_stop = 50 + int(np.random.exponential(4.5))/2
-#                         nuc5 = context[random_start]
-#                         nuc8 = context[random_stop]
-#                         #if nuc5!=context[random_start+1] and nuc8!=context[random_start + list_stop[i] - list_start[i]]:
-#                         if nuc5!=context[random_start+1] and nuc8!=context[random_stop-1] and random_start!=random_stop and random_start+1!=random_stop:
-#                             boundary_dic_control[repeat, nuc5 + nuc8] += indel_fraction_mutant_matrix[indel_index, site]
-#                             repeat += 1
-#
-#
-#                 # ## boundary
-#                 # boundary_dic[nuc1 + nuc2] += indel_fraction_mutant_matrix[indel_index, site]
-#                 # boundary_dic[nuc3 + nuc4] += indel_fraction_mutant_matrix[indel_index, site]
-#                 #
-#                 # repeat = 0
-#                 # while repeat < max_repeat:
-#                 #     ## boundary
-#                 #     random_start = 50 - int(np.random.exponential(4.5)) / 2
-#                 #     random_stop = 50 + int(np.random.exponential(4.5)) / 2
-#                 #
-#                 #     nuc5 = context[random_start]
-#                 #     nuc6 = context[random_start+1]
-#                 #
-#                 #     nuc7 = context[random_stop]
-#                 #     nuc8 = context[random_stop+1]
-#                 #
-#                 #     if random_start != random_stop:
-#                 #         boundary_dic_control[repeat,nuc5+nuc6] += indel_fraction_mutant_matrix[indel_index,site]
-#                 #         boundary_dic_control[repeat,nuc7+nuc8] += indel_fraction_mutant_matrix[indel_index,site]
-#                 #         repeat += 1
-#         # add stop
-#
-#
-# print boundary_dic
-#
-# legend_nuc = []
-# vec_to_plot = []
-# vec_to_plot_control = []
-# for repeat in range(max_repeat):
-#     vec_to_plot_control.append([])
-# for nuc1 in ['A', 'C', 'G', 'T']:
-#     for nuc2 in ['A', 'C', 'G', 'T']:
-#         vec_to_plot.append(boundary_dic[nuc1+nuc2])
-#         legend_nuc.append(nuc1+nuc2)
-#
-# for repeat in range(max_repeat):
-#     for nuc1 in ['A', 'C', 'G', 'T']:
-#         for nuc2 in ['A', 'C', 'G', 'T']:
-#             vec_to_plot_control[repeat].append(boundary_dic_control[repeat,nuc1 + nuc2])
-#
-# vec_to_plot_control = np.asarray(vec_to_plot_control)
-# vec_to_plot_control = vec_to_plot_control / np.reshape(np.sum(vec_to_plot_control, axis=1), (-1, 1))
-#
-# print vec_to_plot_control
-#
-# plt.stem(range(0,16),vec_to_plot/np.sum(vec_to_plot))
-# plt.errorbar(range(0,16),np.mean(vec_to_plot_control,axis=0) , yerr = np.std(vec_to_plot_control,axis=0),color='r')
-# #plt.stem(vec_to_plot_control/np.sum(vec_to_plot_control),'r')
-# plt.ylabel('Prob.')
-# plt.xticks(range(0,16),legend_nuc)
-# plt.legend(['Empirical Distribution','Random Control'],loc=3)
-# plt.savefig('plots/deletion_boundary_corrrelation_exp.pdf')
-# plt.clf()
+### here we find the distribution of boundaries
 
-# #####
-#
+for site, site_name in enumerate(name_genes_grna_unique):
+    site_name_list = site_name.split('-')
+    context = context_genome_dict[site_name_list[1] + '-' + site_name_list[2]]
+    for indel_index in range(indel_num):
+        list_start = dic_del_start[indel_index]
+        list_stop = dic_del_stop[indel_index]
+        for i in range(len(list_start)):
+
+            size_dic[list_stop[i] - list_start[i]] += indel_fraction_mutant_matrix[indel_index, site]
+
+
+            #print list_start[i]+abs(min_start)
+            if list_start[i]+50 < 99 and list_start[i]+50 >= 1 and list_stop[i]+50 < 99 and list_stop[i]+50 >= 1:
+
+                center_dic[int(round((list_stop[i] + list_start[i])/2.))] += indel_fraction_mutant_matrix[indel_index, site]
+
+                nuc1 = context[list_start[i]+49]
+                nuc2 = context[list_start[i]+50]
+
+                nuc3 = context[list_stop[i]-1+50]
+                nuc4 = context[list_stop[i]-1+51]
+
+                # boundary correlation
+                if nuc1!=nuc2 and nuc3!=nuc4: # alignment correction
+                    boundary_dic[nuc1 + nuc4] += indel_fraction_mutant_matrix[indel_index, site]
+                    repeat = 0
+                    while repeat<max_repeat:
+                        ## boundary correlation
+                        # this is uniform random
+                        #random_start = int(np.random.randint(0, 99-(list_stop[i] - list_start[i]+1), size=1))
+                        #nuc5 = context[random_start]
+                        #nuc8 = context[random_start + list_stop[i] - list_start[i]+1]
+
+                        # this is expoential
+                        random_start = 50 - int(np.random.exponential(4.5))/2
+                        random_stop = 50 + int(np.random.exponential(4.5))/2
+                        nuc5 = context[random_start]
+                        nuc8 = context[random_stop]
+                        #if nuc5!=context[random_start+1] and nuc8!=context[random_start + list_stop[i] - list_start[i]]:
+                        if nuc5!=context[random_start+1] and nuc8!=context[random_stop-1] and random_start!=random_stop and random_start+1!=random_stop:
+                            boundary_dic_control[repeat, nuc5 + nuc8] += indel_fraction_mutant_matrix[indel_index, site]
+                            repeat += 1
+
+
+                # ## boundary
+                # boundary_dic[nuc1 + nuc2] += indel_fraction_mutant_matrix[indel_index, site]
+                # boundary_dic[nuc3 + nuc4] += indel_fraction_mutant_matrix[indel_index, site]
+                #
+                # repeat = 0
+                # while repeat < max_repeat:
+                #     ## boundary
+                #     random_start = 50 - int(np.random.exponential(4.5)) / 2
+                #     random_stop = 50 + int(np.random.exponential(4.5)) / 2
+                #
+                #     nuc5 = context[random_start]
+                #     nuc6 = context[random_start+1]
+                #
+                #     nuc7 = context[random_stop]
+                #     nuc8 = context[random_stop+1]
+                #
+                #     if random_start != random_stop:
+                #         boundary_dic_control[repeat,nuc5+nuc6] += indel_fraction_mutant_matrix[indel_index,site]
+                #         boundary_dic_control[repeat,nuc7+nuc8] += indel_fraction_mutant_matrix[indel_index,site]
+                #         repeat += 1
+        # add stop
+
+
+print boundary_dic
+
+legend_nuc = []
+vec_to_plot = []
+vec_to_plot_control = []
+for repeat in range(max_repeat):
+    vec_to_plot_control.append([])
+for nuc1 in ['A', 'C', 'G', 'T']:
+    for nuc2 in ['A', 'C', 'G', 'T']:
+        vec_to_plot.append(boundary_dic[nuc1+nuc2])
+        legend_nuc.append(nuc1+nuc2)
+
+for repeat in range(max_repeat):
+    for nuc1 in ['A', 'C', 'G', 'T']:
+        for nuc2 in ['A', 'C', 'G', 'T']:
+            vec_to_plot_control[repeat].append(boundary_dic_control[repeat,nuc1 + nuc2])
+
+vec_to_plot_control = np.asarray(vec_to_plot_control)
+vec_to_plot_control = vec_to_plot_control / np.reshape(np.sum(vec_to_plot_control, axis=1), (-1, 1))
+
+print vec_to_plot_control
+
+plt.stem(range(0,16),vec_to_plot/np.sum(vec_to_plot))
+plt.errorbar(range(0,16),np.mean(vec_to_plot_control,axis=0) , yerr = np.std(vec_to_plot_control,axis=0),color='r')
+#plt.stem(vec_to_plot_control/np.sum(vec_to_plot_control),'r')
+plt.ylabel('Prob.')
+plt.xticks(range(0,16),legend_nuc)
+plt.legend(['Empirical Distribution','Random Control'],loc=3)
+plt.savefig('plots/deletion_boundary_corrrelation_exp.pdf')
+plt.clf()
+
+#####
+
+
+print center_dic
+
 # boundary_dic = {}
 # boundary_dic_control = {}
 # for nuc1 in ['A', 'C', 'G', 'T']:
@@ -391,80 +399,80 @@ print "min start = ", min_start
 # plt.clf()
 # # ###############
 #
-#### plottign the length of deletions
-
-site = 0
-intron_exon_label_vec = coding_region_finder(name_genes_grna_unique)
-print "# of exons =",np.sum(intron_exon_label_vec==2)
-print "# of introns =",np.sum(intron_exon_label_vec==1)
-print "# of nongenes =", np.sum(intron_exon_label_vec==0)
-
-
-for site_name in name_genes_grna_unique:
-    site_name_list = site_name.split('-')
-    #context = context_genome_dict[site_name_list[1] + '-' + site_name_list[2]]
-    for indel_index in range(indel_num):
-        list_start = dic_del_start[indel_index]
-        list_stop = dic_del_stop[indel_index]
-        for i in range(len(list_start)):
-            size_dic[list_stop[i] - list_start[i]] += indel_fraction_mutant_matrix[indel_index, site]
-            if intron_exon_label_vec[site] == 2:
-                size_coding_dic[list_stop[i] - list_start[i]] += indel_fraction_mutant_matrix[indel_index, site]
-            else:
-                size_noncoding_dic[list_stop[i] - list_start[i]] += indel_fraction_mutant_matrix[indel_index, site]
-    site += 1
-
-size_vec_unique = np.sort(list(set(size_vec)))
-size_freq = []
-size_freq_coding = []
-size_freq_noncoding = []
-for i in range(np.size( size_vec_unique  )):
-    size_freq.append(size_dic[size_vec_unique[i]])
-    size_freq_coding.append(size_coding_dic[size_vec_unique[i]])
-    size_freq_noncoding.append(size_noncoding_dic[size_vec_unique[i]])
-
-
-error = 100
-for p in np.linspace(0.001,0.99,100):
-    new_error = np.linalg.norm(geom.pmf(np.asarray(size_vec_unique), p) - size_freq/np.sum(size_freq))
-    if new_error<error:
-        error = new_error
-        bestpgeom = p
-
-print "geometric error =", error
-error = 100000
-for lam in np.linspace(2,6,100): ## ***here lam is actual scaling***
-    new_error = np.linalg.norm(expon.pdf(np.asarray(size_vec_unique),0, lam) - size_freq/np.sum(size_freq))
-    if new_error<error:
-        error = new_error
-        bestlamexp = lam
-
-print "exponential error =", error
-
-print "p = ", bestpgeom
-print "lambda = ", bestlamexp
-size_freq_geom = geom.pmf(np.asarray(size_vec_unique), bestpgeom)
-size_freq_exp = expon.pdf(np.asarray(size_vec_unique),0, bestlamexp)
-plt.plot(size_vec_unique,size_freq/np.sum(size_freq),'o')
-plt.plot(size_vec_unique,size_freq_geom,'ro')
-plt.plot(size_vec_unique,size_freq_exp,'go')
-plt.ylabel('Sum of Fractions')
-plt.xlabel('Length')
-plt.legend(['Empirical Distribution', 'Geometric Distribution p=%.2f'%bestpgeom,'Exponential Distribution scale=%.2f'%bestlamexp ], loc=1)
-plt.savefig('plots/deletion_length_hist.pdf')
-plt.clf()
-
-plt.plot(size_vec_unique,size_freq_coding,'o')
-plt.ylabel('Sum of Fractions')
-plt.xlabel('Length')
-#plt.legend(['Empirical Distribution', 'Random Control'], loc=3)
-plt.savefig('plots/deletion_length_hist_coding.pdf')
-plt.clf()
-
-plt.plot(size_vec_unique,size_freq_noncoding,'o')
-plt.ylabel('Sum of Fractions')
-plt.xlabel('Length')
-#plt.legend(['Empirical Distribution', 'Random Control'], loc=3)
-plt.savefig('plots/deletion_length_hist_noncoding.pdf')
-plt.clf()
+# #### plottign the length of deletions
+#
+# site = 0
+# intron_exon_label_vec = coding_region_finder(name_genes_grna_unique)
+# print "# of exons =",np.sum(intron_exon_label_vec==2)
+# print "# of introns =",np.sum(intron_exon_label_vec==1)
+# print "# of nongenes =", np.sum(intron_exon_label_vec==0)
+#
+#
+# for site_name in name_genes_grna_unique:
+#     site_name_list = site_name.split('-')
+#     #context = context_genome_dict[site_name_list[1] + '-' + site_name_list[2]]
+#     for indel_index in range(indel_num):
+#         list_start = dic_del_start[indel_index]
+#         list_stop = dic_del_stop[indel_index]
+#         for i in range(len(list_start)):
+#             size_dic[list_stop[i] - list_start[i]] += indel_fraction_mutant_matrix[indel_index, site]
+#             if intron_exon_label_vec[site] == 2:
+#                 size_coding_dic[list_stop[i] - list_start[i]] += indel_fraction_mutant_matrix[indel_index, site]
+#             else:
+#                 size_noncoding_dic[list_stop[i] - list_start[i]] += indel_fraction_mutant_matrix[indel_index, site]
+#     site += 1
+#
+# size_vec_unique = np.sort(list(set(size_vec)))
+# size_freq = []
+# size_freq_coding = []
+# size_freq_noncoding = []
+# for i in range(np.size( size_vec_unique  )):
+#     size_freq.append(size_dic[size_vec_unique[i]])
+#     size_freq_coding.append(size_coding_dic[size_vec_unique[i]])
+#     size_freq_noncoding.append(size_noncoding_dic[size_vec_unique[i]])
+#
+#
+# error = 100
+# for p in np.linspace(0.001,0.99,100):
+#     new_error = np.linalg.norm(geom.pmf(np.asarray(size_vec_unique), p) - size_freq/np.sum(size_freq))
+#     if new_error<error:
+#         error = new_error
+#         bestpgeom = p
+#
+# print "geometric error =", error
+# error = 100000
+# for lam in np.linspace(2,6,100): ## ***here lam is actual scaling***
+#     new_error = np.linalg.norm(expon.pdf(np.asarray(size_vec_unique),0, lam) - size_freq/np.sum(size_freq))
+#     if new_error<error:
+#         error = new_error
+#         bestlamexp = lam
+#
+# print "exponential error =", error
+#
+# print "p = ", bestpgeom
+# print "lambda = ", bestlamexp
+# size_freq_geom = geom.pmf(np.asarray(size_vec_unique), bestpgeom)
+# size_freq_exp = expon.pdf(np.asarray(size_vec_unique),0, bestlamexp)
+# plt.plot(size_vec_unique,size_freq/np.sum(size_freq),'o')
+# plt.plot(size_vec_unique,size_freq_geom,'ro')
+# plt.plot(size_vec_unique,size_freq_exp,'go')
+# plt.ylabel('Sum of Fractions')
+# plt.xlabel('Length')
+# plt.legend(['Empirical Distribution', 'Geometric Distribution p=%.2f'%bestpgeom,'Exponential Distribution scale=%.2f'%bestlamexp ], loc=1)
+# plt.savefig('plots/deletion_length_hist.pdf')
+# plt.clf()
+#
+# plt.plot(size_vec_unique,size_freq_coding,'o')
+# plt.ylabel('Sum of Fractions')
+# plt.xlabel('Length')
+# #plt.legend(['Empirical Distribution', 'Random Control'], loc=3)
+# plt.savefig('plots/deletion_length_hist_coding.pdf')
+# plt.clf()
+#
+# plt.plot(size_vec_unique,size_freq_noncoding,'o')
+# plt.ylabel('Sum of Fractions')
+# plt.xlabel('Length')
+# #plt.legend(['Empirical Distribution', 'Random Control'], loc=3)
+# plt.savefig('plots/deletion_length_hist_noncoding.pdf')
+# plt.clf()
 #
