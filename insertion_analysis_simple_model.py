@@ -164,23 +164,39 @@ for key, indel_seq in ins_dic.iteritems():
         nXXL[int(nuc_dic[indel_seq]),int(nuc_dic[nuc1])] += indel_fraction_mutant_matrix[indel_index,site_index]
         nXXR[int(nuc_dic[indel_seq]), int(nuc_dic[nuc2])] += indel_fraction_mutant_matrix[indel_index, site_index]
 
+
+
 #print nXXR
 #print nXXL
 
-nXX = nXXR
+nXX = nXXR + nXXL
 PP = np.zeros((4,4))
 
 for i in range(4):
     PM = np.ones((3,3))
-    PM[0,0] +=  nXX[i,3] / nXX[i,0]
-    PM[1,1] +=  nXX[i,3] / nXX[i,1]
-    PM[2,2] +=  nXX[i,3] / nXX[i,2]
+    PM[0,0] +=  nXX[3,i] / nXX[0,i]
+    PM[1,1] +=  nXX[3,i] / nXX[1,i]
+    PM[2,2] +=  nXX[3,i] / nXX[2,i]
 
-    row = np.linalg.solve(PM, np.ones(3))
+    col = np.linalg.solve(PM, np.ones(3))
 
     for j in range(3):
-        PP[i,j] = row[j]
+        PP[j,i] = col[j]
 
-    PP[i,3] = 1 - np.sum(row)
+    PP[3,i] = 1 - np.sum(col)
 
 print PP
+fig, axis = plt.subplots()
+heat_map = axis.pcolor(PP, cmap=plt.cm.Greens)
+axis.set_yticks(np.arange(PP.shape[0])+0.5, minor=False)
+axis.set_xticks(np.arange(PP.shape[1])+0.5, minor=False)
+axis.invert_yaxis()
+axis.set_yticklabels(['A','T','C','G'], minor=False)
+axis.set_xticklabels(['A','T','C','G'], minor=False)
+plt.xticks(fontsize=12)
+plt.yticks(fontsize=12)
+plt.xlabel('Neighboring Nucleotide')
+plt.ylabel('Inserted Nucleotide')
+plt.colorbar(heat_map)
+plt.savefig('plots/Insertion_model_heatmap_Sym.pdf')
+plt.clf

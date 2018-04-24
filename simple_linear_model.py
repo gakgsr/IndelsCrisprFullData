@@ -243,7 +243,7 @@ def load_gene_sequence_k_mer(sequence_file_name, name_genes_grna_unique, k):
 
 def perform_linear_regression(sequence_pam_per_gene_grna, count_insertions_gene_grna_binary, count_deletions_gene_grna_binary, train_index, test_index, ins_coeff, del_coeff, to_plot = False):
   #lin_reg = linear_model.Lasso(alpha=0.0001)
-  lin_reg = linear_model.Ridge(alpha=1)
+  lin_reg = linear_model.Ridge(alpha=300)
   #print "----"
   #print "Number of positive testing samples in insertions is %f" % np.sum(count_insertions_gene_grna_binary[test_index])
   #print "Total number of testing samples %f" % np.size(test_index)
@@ -255,10 +255,10 @@ def perform_linear_regression(sequence_pam_per_gene_grna, count_insertions_gene_
   insertion_rmse = sqrt(mean_squared_error(lin_reg_pred,count_insertions_gene_grna_binary[test_index]))
   ins_coeff.append(lin_reg.coef_)
   if to_plot:
-    #pvalue_vec = f_regression(sequence_pam_per_gene_grna[test_index],lin_reg_pred, center=True)[1]
+    pvalue_vec = f_regression(sequence_pam_per_gene_grna[test_index],lin_reg_pred, center=True)[1]
     print np.shape(sequence_pam_per_gene_grna[test_index])
     print np.shape(lin_reg_pred)
-    scores, pvalue_vec = chi2(sequence_pam_per_gene_grna[test_index], lin_reg_pred)
+    #scores, pvalue_vec = chi2(sequence_pam_per_gene_grna[test_index], lin_reg_pred)
     #pvalue_vec = f_regression(sequence_pam_per_gene_grna[train_index], count_deletions_gene_grna_binary[train_index])[1]
     plot_QQ(lin_reg_pred,count_insertions_gene_grna_binary[test_index],'QQ_linear_insertion')
     plot_seq_logo(lin_reg.coef_, "Insertion_linear")
@@ -282,8 +282,8 @@ def perform_linear_regression(sequence_pam_per_gene_grna, count_insertions_gene_
   if to_plot:
     print np.shape(sequence_pam_per_gene_grna[test_index])
     print np.shape(lin_reg_pred)
-    #pvalue_vec = f_regression(sequence_pam_per_gene_grna[test_index], lin_reg_pred, center=True)[1]
-    scores, pvalue_vec = chi2(sequence_pam_per_gene_grna[test_index], lin_reg_pred)
+    pvalue_vec = f_regression(sequence_pam_per_gene_grna[test_index], lin_reg_pred, center=True)[1]
+    #scores, pvalue_vec = chi2(sequence_pam_per_gene_grna[test_index], lin_reg_pred)
     #pvalue_vec = f_regression(sequence_pam_per_gene_grna[train_index], count_deletions_gene_grna_binary[train_index])[1]
     plot_seq_logo(-np.log10(pvalue_vec), "Deletion_linear_pvalue" )
     plot_QQ(lin_reg_pred, count_deletions_gene_grna_binary[test_index], 'QQ_linear_deletion')
@@ -315,7 +315,7 @@ def cross_validation_model(sequence_pam_per_gene_grna, count_insertions_gene_grn
     fold = 0
     for train_index, test_index in fold_valid.split(sequence_pam_per_gene_grna):
       to_plot = False
-      if repeat == 5 and fold == 0:
+      if repeat == 2 and fold == 0:
         to_plot = True
       score_score = perform_linear_regression(sequence_pam_per_gene_grna, count_insertions_gene_grna, count_deletions_gene_grna, train_index, test_index, ins_coeff, del_coeff, to_plot)
       insertion_avg_r2_score += score_score[0]
@@ -382,31 +382,31 @@ length_indel_deletion = pickle.load(open('storage/length_indel_deletion.p', 'rb'
 print "loading homopolymer matrix"
 homopolymer_matrix = pickle.load(open('storage/homopolymer_matrix_w-3:3.p', 'rb'))
 
-
-length_one_counter = 0
-deletion_counter = 0
-homo3_counter = 0
-LL = 0.
-for i in range(len(name_genes_grna_unique)):
-    if 3 in homopolymer_matrix[:,i]:
-        homo3_counter += 1
-        inde_type = name_indel_type_unique[np.argsort(indel_count_matrix[:,i])[-1]]
-        if 'D' in inde_type:
-            deletion_counter += 1
-            if int(inde_type.strip('D').split(':')[1]) != 2 and int(inde_type.strip('D').split(':')[1]) != 1:
-                length_one_counter+=1
-                LL += int(inde_type.strip('D').split(':')[1])
-                print inde_type
-
-print "Number of sites with a deletion of length 1:", length_one_counter
-print "Total number of sites with top-deletion:", deletion_counter
-print "Total homo counter:", homo3_counter
-print LL/length_one_counter
+#
+# length_one_counter = 0
+# deletion_counter = 0
+# homo3_counter = 0
+# LL = 0.
+# for i in range(len(name_genes_grna_unique)):
+#     if 2 in homopolymer_matrix[:,i] and 3 not in homopolymer_matrix[:,i]:
+#         homo3_counter += 1
+#         inde_type = name_indel_type_unique[np.argsort(indel_count_matrix[:,i])[-1]]
+#         if 'D' in inde_type:
+#             deletion_counter += 1
+#             if int(inde_type.strip('D').split(':')[1]) != 2 and int(inde_type.strip('D').split(':')[1]) != 1:
+#                 length_one_counter+=1
+#                 LL += int(inde_type.strip('D').split(':')[1])
+#                 print inde_type
+#
+# print "Number of sites with a deletion of length 1:", length_one_counter
+# print "Total number of sites with top-deletion:", deletion_counter
+# print "Total homo counter:", homo3_counter
+# print LL/length_one_counter
 
 #count_insertions_gene_grna, count_deletions_gene_grna = compute_summary_statistics(name_genes_grna_unique, name_indel_type_unique, indel_count_matrix, indel_prop_matrix)
 #prop_insertions_gene_grna, prop_deletions_gene_grna = avg_length_pred()
 
-consider_length = 1
+#consider_length = 1
 fraction_insertions, fraction_deletions = fraction_of_deletion_insertion(indel_count_matrix,length_indel_insertion,length_indel_deletion)
 exp_insertion_length, exp_deletion_length = expected_deletion_insertion_length(indel_count_matrix,length_indel_insertion,length_indel_deletion)
 eff_vec = eff_vec_finder(indel_count_matrix,name_genes_grna_unique)
@@ -418,9 +418,11 @@ sequence_genom_context_gene_grna, sequence_pam_repeat_per_gene_grna, sequence_pa
 #print "Using all Genomic Context"
 #cross_validation_model(sequence_genom_context_gene_grna, prop_insertions_gene_grna, prop_deletions_gene_grna)
 #cross_validation_model(sequence_genom_context_gene_grna, eff_vec, eff_vec)
-#print "Using both grna sequence and PAM"
-#cross_validation_model(sequence_genom_context_gene_grna, eff_vec, eff_vec)
-#cross_validation_model(sequence_pam_homop_per_gene_grna, fraction_insertions, fraction_deletions)
+print "Using both grna sequence and PAM"
+cross_validation_model(sequence_genom_context_gene_grna, eff_vec, eff_vec)
+#cross_validation_model(sequence_pam_repeat_per_gene_grna, fraction_insertions, fraction_deletions)
+#cross_validation_model(sequence_pam_repeat_per_gene_grna, fraction_insertions, fraction_deletions)
+
 #cross_validation_model(sequence_pam_homop_per_gene_grna, exp_insertion_length, exp_deletion_length)
 #print "Using only grna sequence"
 #cross_validation_model(sequence_per_gene_grna, prop_insertions_gene_grna, prop_deletions_gene_grna)

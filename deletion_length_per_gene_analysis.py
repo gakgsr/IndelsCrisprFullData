@@ -277,6 +277,13 @@ for i in range(10):
     print vec_3N[sorted_index[i]]
 
 
+vec_3N_as_array = np.asarray(vec_3N_2)
+tstat, pvalue = ttest_ind_from_stats(np.mean(vec_3N_as_array[sorted_index[:50]]), np.std(vec_3N_as_array[sorted_index[:50]]), 50,
+                                     np.mean(vec_3N_as_array[sorted_index[-50:]]), np.std(vec_3N_as_array[sorted_index[-50:]]), 50)
+
+
+print 'pvalue of tom and bottom genes = ', pvalue
+
 essential_counter = 0.
 sorted_index = np.asarray(np.argsort(vec_3N))[::-1]
 for i in range(len(sorted_index)):
