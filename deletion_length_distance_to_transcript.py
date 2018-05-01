@@ -145,36 +145,26 @@ gene_set = set(gene_list)
 print "number of genes", len(gene_set)
 print "number of sites", site
 
-## James Nature Paper
-# essential_gene_chart = read_excel('/Users/amirali/Projects/nature19057-SI Table 13.xlsx','LoF Intolerant',header=None)
-# essential_gene_list =  essential_gene_chart[1].values.tolist()[1:]
-data = pd.read_csv('/Users/amirali/Projects/tables4.txt', sep=" ", header=None)
-data.columns = ["gene1", "v1", "gene2", "v2"]
-essential_gene_list= list(data['gene1'])
 
-essential_counter = 0
-essential_gene_dic = {}
-for gene in gene_set:
-    if gene in essential_gene_list:
-        essential_gene_dic[gene] = 1
-        essential_counter+=1
-    else:
-        essential_gene_dic[gene] = 0
+minDistTSS,minDistTSE = distance_to_transcribed_sequence(name_genes_grna_unique)
+tresh = np.mean(minDistTSE)
 
-print "number of essential genes", essential_counter
-
+CCCC = 0
 for site_index,site_name in enumerate(name_genes_grna_unique):
-    gene_name = site_name.split('-')[0]
+    if minDistTSE[site_index] > tresh:
+        CCCC+=1
+
     for indel_index in range(indel_num):
         list_start = dic_del_start[indel_index]
         list_stop = dic_del_stop[indel_index]
         for i in range(len(list_start)):
-            if essential_gene_dic[gene_name] == 1: # essential genes
+            if minDistTSS[site_index] > tresh: # essential genes
                 size_dic_essential[list_stop[i] - list_start[i]] += indel_fraction_mutant_matrix[indel_index, site_index]
             else:
                 size_dic_not_essential[list_stop[i] - list_start[i]] += indel_fraction_mutant_matrix[indel_index, site_index]
 
 
+print CCCC
 size_vec_unique = np.sort(list(set(size_vec)))
 size_freq_essential = []
 size_freq_notessential = []
@@ -186,12 +176,16 @@ plt.plot(size_vec_unique,size_freq_essential,'o')
 plt.ylabel('Sum of Fractions')
 plt.xlabel('Length')
 #plt.legend(['Empirical Distribution', 'Random Control'], loc=3)
-plt.savefig('plots/deletion_length_hist_essential.pdf')
+plt.savefig('plots/deletion_length_hist_Far.pdf')
 plt.clf()
 
 plt.plot(size_vec_unique,size_freq_notessential,'o')
 plt.ylabel('Sum of Fractions')
 plt.xlabel('Length')
 #plt.legend(['Empirical Distribution', 'Random Control'], loc=3)
-plt.savefig('plots/deletion_length_hist_notessential.pdf')
+plt.savefig('plots/deletion_length_hist_Close.pdf')
 plt.clf()
+
+
+#####
+

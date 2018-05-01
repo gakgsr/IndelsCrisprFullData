@@ -11,6 +11,7 @@ from matplotlib.patches import PathPatch
 from matplotlib.font_manager import FontProperties
 import warnings
 warnings.filterwarnings("ignore")
+import math
 
 fp = FontProperties(family="Arial", weight="bold") 
 globscale = 1.35
@@ -43,11 +44,12 @@ def plot_seq_logo(logo_heights, name):
   for i in range(logo_heights.shape[0]):
     list_of_heights = [('A', logo_heights[i, 0]), ('C', logo_heights[i, 1]), ('G', logo_heights[i, 2]), ('T', logo_heights[i, 3])]
     list_of_heights = sorted(list_of_heights, key = lambda x: x[1])
-    y = np.sum(logo_heights[i][logo_heights[i] < 0])
+    y = np.nansum(logo_heights[i][logo_heights[i] < 0])
     mini = min(y, mini)
     for base, score in list_of_heights:
       letterAt(base, x, y, abs(score), ax)
-      y += abs(score)
+      if not math.isnan(score):
+        y += abs(score)
     x += 1
     maxi = max(maxi, y)
 
@@ -55,6 +57,7 @@ def plot_seq_logo(logo_heights, name):
   #plt.xticks([0,10,20,30,40,50,60,70,80,90,100],[-50,-40,-30,-20,-10,0,10,20,30,40,50])
   plt.xlim((0, x)) 
   plt.ylim((mini, maxi))
+  #plt.ylim((mini, 400))
   plt.tight_layout()
   plt.savefig('sequence_logo_' + name + '.pdf')
   plt.clf()

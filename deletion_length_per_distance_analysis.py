@@ -27,9 +27,9 @@ import math
 from scipy.stats import ttest_ind_from_stats
 from scipy.stats import entropy
 from scipy.signal import savgol_filter
-from pandas import read_excel
 import pandas as pd
-
+from pandas import read_excel
+from scipy.stats import ttest_ind_from_stats
 
 def distance_to_transcribed_sequence(name_genes_grna_unique):
     minDistTSS = []
@@ -48,7 +48,6 @@ def distance_to_transcribed_sequence(name_genes_grna_unique):
         minDistTSE.append(np.mean(disT[location[1:]][:,1]))
 
     return minDistTSS,minDistTSE
-
 
 def coding_region_finder(name_genes_grna_unique):
     intron_exon_dict = pickle.load(open('storage/intron_exon_status.pkl', 'rb'))
@@ -95,19 +94,30 @@ counter =0
 dic_del = {}
 dic_del_start = {}
 dic_del_stop = {}
+dic_del_size_del = {}
 dic_del_len = np.zeros(indel_num)
 min_start=0
 max_stop=0
 
-size_dic_essential = {}
-size_dic_not_essential = {}
+size_dic = {}
 size_vec = []
 for indel_index in range(indel_num):
     dic_del[counter]=[]
     dic_del_start[counter] = []
     dic_del_stop[counter] = []
+    dic_del_size_del[counter] = []
     indel_locations = re.split('I|D',name_indel_type_unique[indel_index])[:-1]
     indel_types = ''.join(c for c in name_indel_type_unique[indel_index] if (c=='I' or c=='D'))
+
+    sum_of_deletion_size = 0
+    for i in range(len(indel_types)):
+        if indel_types[i]=='D':
+            start, size = indel_locations[i].split(':')
+            sum_of_deletion_size += int(size)
+
+    if 'I' not in indel_types:
+        dic_del_size_del[counter].append(sum_of_deletion_size)
+
     for i in range(len(indel_types)):
         if indel_types[i]=='D':
             start,size = indel_locations[i].split(':')
@@ -128,70 +138,55 @@ for indel_index in range(indel_num):
             if int(stop)>max_stop:
                 max_stop = stop
 
-            size_dic_essential[size] = 0
-            size_dic_not_essential[size] = 0
+            size_dic[size] = 0
             size_vec.append(size)
 
     counter = counter + 1
 
 
 #########
-
-gene_list = []
-for site, site_name in enumerate(name_genes_grna_unique):
-    site_name_list = site_name.split('-')
-    gene_list.append(site_name_list[0])
-gene_set = set(gene_list)
-print "number of genes", len(gene_set)
-print "number of sites", site
-
-## James Nature Paper
-# essential_gene_chart = read_excel('/Users/amirali/Projects/nature19057-SI Table 13.xlsx','LoF Intolerant',header=None)
-# essential_gene_list =  essential_gene_chart[1].values.tolist()[1:]
-data = pd.read_csv('/Users/amirali/Projects/tables4.txt', sep=" ", header=None)
-data.columns = ["gene1", "v1", "gene2", "v2"]
-essential_gene_list= list(data['gene1'])
-
-essential_counter = 0
-essential_gene_dic = {}
-for gene in gene_set:
-    if gene in essential_gene_list:
-        essential_gene_dic[gene] = 1
-        essential_counter+=1
-    else:
-        essential_gene_dic[gene] = 0
-
-print "number of essential genes", essential_counter
-
-for site_index,site_name in enumerate(name_genes_grna_unique):
-    gene_name = site_name.split('-')[0]
-    for indel_index in range(indel_num):
-        list_start = dic_del_start[indel_index]
-        list_stop = dic_del_stop[indel_index]
-        for i in range(len(list_start)):
-            if essential_gene_dic[gene_name] == 1: # essential genes
-                size_dic_essential[list_stop[i] - list_start[i]] += indel_fraction_mutant_matrix[indel_index, site_index]
-            else:
-                size_dic_not_essential[list_stop[i] - list_start[i]] += indel_fraction_mutant_matrix[indel_index, site_index]
-
-
+vec_3N = []
+vec_3N_1 = []
+vec_3N_2 = []
+vec_3N_control = []
+vec_3N_difference = []
 size_vec_unique = np.sort(list(set(size_vec)))
-size_freq_essential = []
-size_freq_notessential = []
-for i in range(np.size( size_vec_unique  )):
-    size_freq_essential.append(size_dic_essential[size_vec_unique[i]])
-    size_freq_notessential.append(size_dic_not_essential[size_vec_unique[i]])
 
-plt.plot(size_vec_unique,size_freq_essential,'o')
-plt.ylabel('Sum of Fractions')
-plt.xlabel('Length')
-#plt.legend(['Empirical Distribution', 'Random Control'], loc=3)
-plt.savefig('plots/deletion_length_hist_essential.pdf')
-plt.clf()
+for site_index in range(site_num):
+    size_dic = dict.fromkeys(size_dic, 0)
+    for indel_index in range(indel_num):
+        if dic_del_size_del[indel_index]:
+            size_dic[dic_del_size_del[indel_index][0]] += indel_fraction_mutant_matrix[indel_index, site_index]
 
-plt.plot(size_vec_unique,size_freq_notessential,'o')
-plt.ylabel('Sum of Fractions')
-plt.xlabel('Length')
-#plt.legend(['Empirical Distribution', 'Random Control'], loc=3)
-plt.savefig('plots/deletion_length_hist_notessential.pdf')
-plt.clf()
+    size_freq = []
+    for i in range(np.size(size_vec_unique)):
+        size_freq.append(size_dic[size_vec_unique[i]])
+
+    len_dist = np.asarray(size_freq / sum(size_freq))
+    len_dist_smooth = savgol_filter(len_dist, 55, 11)
+    len_dist_smooth[len_dist_smooth < 0] = 0
+    len_dist_smooth = len_dist_smooth / sum(len_dist_smooth)
+
+    index_3N = np.linspace(2+3, 68+6, 24, dtype='int')
+    index_3N_1 = np.linspace(1, 67, 23, dtype='int')
+    index_3N_2 = np.linspace(0, 66, 23, dtype='int')
+
+    len_dist_3N = len_dist[index_3N]
+    len_dist_3N_1 = len_dist[index_3N_1]
+    len_dist_3N_2 = len_dist[index_3N_2]
+
+    vec_3N.append(np.sum(len_dist_3N))
+    vec_3N_1.append(np.sum(len_dist_3N_1))
+    vec_3N_2.append(np.sum(len_dist_3N_2))
+
+    vec_3N_control.append(np.sum(len_dist_smooth[index_3N]))
+    vec_3N_difference.append(np.sum(abs(len_dist_3N - len_dist_smooth[index_3N])))
+
+vec_3N = np.asarray(vec_3N)
+minDistTSS,minDistTSE = distance_to_transcribed_sequence(name_genes_grna_unique)
+
+print np.mean(vec_3N[minDistTSE>np.mean(minDistTSE)])
+print np.std(vec_3N[minDistTSE>np.mean(minDistTSE)])
+print "---"
+print np.mean(vec_3N[minDistTSE<np.mean(minDistTSE)])
+print np.std(vec_3N[minDistTSE<np.mean(minDistTSE)])

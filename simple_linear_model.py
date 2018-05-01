@@ -17,6 +17,7 @@ import glob
 import csv
 from scipy import stats
 from sklearn.feature_selection import chi2
+import copy
 
 def length_of_repeat_finder(seq):
     maxlen = 2
@@ -168,11 +169,12 @@ def one_hot_index(nucleotide):
   nucleotide_array = ['A', 'C', 'G', 'T']
   return nucleotide_array.index(nucleotide)
 
-def load_gene_sequence(sequence_file_name, name_genes_grna_unique,homopolymer_matrix,intron_exon_label_vec):
+def load_gene_sequence(sequence_file_name, name_genes_grna_unique,homopolymer_matrix,intron_exon_label_vec,chrom_mat,chrom_col):
   # Create numpy matrix of size len(name_genes_grna_unique) * 23, to store the sequence as one-hot encoded
   sequence_pam_per_gene_grna = np.zeros((len(name_genes_grna_unique), 23, 4), dtype = bool)
   sequence_pam_homop_per_gene_grna = np.zeros((len(name_genes_grna_unique), 24, 4))
   sequence_pam_repeat_per_gene_grna = np.zeros((len(name_genes_grna_unique), 24, 4))
+  sequence_pam_chromatin_per_gene_grna = np.zeros((len(name_genes_grna_unique), 24, 4))
   sequence_pam_coding_gccontent_per_gene_grna = np.zeros((len(name_genes_grna_unique), 24, 4))
   sequence_genom_context_gene_grna = np.zeros((len(name_genes_grna_unique), 100, 4), dtype=bool)
 
@@ -190,16 +192,20 @@ def load_gene_sequence(sequence_file_name, name_genes_grna_unique,homopolymer_ma
           sequence_pam_homop_per_gene_grna[index_in_name_genes_grna_unique, i, one_hot_index(l[2][i])] = 1
           sequence_pam_coding_gccontent_per_gene_grna[index_in_name_genes_grna_unique, i, one_hot_index(l[2][i])] = 1
           sequence_pam_repeat_per_gene_grna[index_in_name_genes_grna_unique, i, one_hot_index(l[2][i])] = 1
+          sequence_pam_chromatin_per_gene_grna[index_in_name_genes_grna_unique, i, one_hot_index(l[2][i])] = 1
         for i in range(3):
           sequence_pam_per_gene_grna[index_in_name_genes_grna_unique, 20 + i, one_hot_index(l[3][i])] = 1
           sequence_pam_homop_per_gene_grna[index_in_name_genes_grna_unique, 20 + i, one_hot_index(l[3][i])] = 1
           sequence_pam_coding_gccontent_per_gene_grna[index_in_name_genes_grna_unique, 20 + i, one_hot_index(l[3][i])] = 1
           sequence_pam_repeat_per_gene_grna[index_in_name_genes_grna_unique, 20 + i, one_hot_index(l[3][i])] = 1
+          sequence_pam_chromatin_per_gene_grna[index_in_name_genes_grna_unique, 20 + i, one_hot_index(l[3][i])] = 1
 
         if length_of_repeat_finder(l[2])>4:
           sequence_pam_repeat_per_gene_grna[index_in_name_genes_grna_unique, 23 , 0] = 1
         #print 'sequence', l[2]
         #print 'repeat', length_of_repeat_finder(l[2])
+
+        sequence_pam_chromatin_per_gene_grna[index_in_name_genes_grna_unique, 23 , 0] = np.nanmean(chrom_mat[l[1] + '-' + l[0]],axis=0)[chrom_col]
 
         sequence_pam_homop_per_gene_grna[index_in_name_genes_grna_unique, 23 , :] = homopolymer_matrix[:,index_in_name_genes_grna_unique]
         if intron_exon_label_vec[index_in_name_genes_grna_unique] == 2: # if exon
@@ -212,7 +218,7 @@ def load_gene_sequence(sequence_file_name, name_genes_grna_unique,homopolymer_ma
 
   #plot_seq_logo(np.mean(sequence_pam_per_gene_grna, axis=0), "input_spacer")
   # Scikit needs only a 2-d matrix as input, so reshape and return
-  return np.reshape(sequence_genom_context_gene_grna, (len(sequence_pam_repeat_per_gene_grna), -1)),np.reshape(sequence_pam_repeat_per_gene_grna, (len(sequence_genom_context_gene_grna), -1)) ,np.reshape(sequence_pam_coding_gccontent_per_gene_grna, (len(sequence_pam_coding_gccontent_per_gene_grna), -1))  ,np.reshape(sequence_pam_homop_per_gene_grna, (len(sequence_pam_homop_per_gene_grna), -1)),np.reshape(sequence_pam_per_gene_grna, (len(name_genes_grna_unique), -1)), np.reshape(sequence_pam_per_gene_grna[:, :20, :], (len(name_genes_grna_unique), -1)), np.reshape(sequence_pam_per_gene_grna[:, 20:, :], (len(name_genes_grna_unique), -1))
+  return np.reshape(sequence_genom_context_gene_grna, (len(sequence_pam_repeat_per_gene_grna), -1)),  np.reshape(sequence_pam_chromatin_per_gene_grna, (len(sequence_pam_chromatin_per_gene_grna), -1))      ,np.reshape(sequence_pam_repeat_per_gene_grna, (len(sequence_genom_context_gene_grna), -1)) ,np.reshape(sequence_pam_coding_gccontent_per_gene_grna, (len(sequence_pam_coding_gccontent_per_gene_grna), -1))  ,np.reshape(sequence_pam_homop_per_gene_grna, (len(sequence_pam_homop_per_gene_grna), -1)),np.reshape(sequence_pam_per_gene_grna, (len(name_genes_grna_unique), -1)), np.reshape(sequence_pam_per_gene_grna[:, :20, :], (len(name_genes_grna_unique), -1)), np.reshape(sequence_pam_per_gene_grna[:, 20:, :], (len(name_genes_grna_unique), -1))
 
 def load_gene_sequence_k_mer(sequence_file_name, name_genes_grna_unique, k):
   # Create numpy matrix of size len(name_genes_grna_unique) * 23, to store the sequence first
@@ -256,8 +262,8 @@ def perform_linear_regression(sequence_pam_per_gene_grna, count_insertions_gene_
   ins_coeff.append(lin_reg.coef_)
   if to_plot:
     pvalue_vec = f_regression(sequence_pam_per_gene_grna[test_index],lin_reg_pred, center=True)[1]
-    print np.shape(sequence_pam_per_gene_grna[test_index])
-    print np.shape(lin_reg_pred)
+    #print np.shape(sequence_pam_per_gene_grna[test_index])
+    #print np.shape(lin_reg_pred)
     #scores, pvalue_vec = chi2(sequence_pam_per_gene_grna[test_index], lin_reg_pred)
     #pvalue_vec = f_regression(sequence_pam_per_gene_grna[train_index], count_deletions_gene_grna_binary[train_index])[1]
     plot_QQ(lin_reg_pred,count_insertions_gene_grna_binary[test_index],'QQ_linear_insertion')
@@ -280,8 +286,8 @@ def perform_linear_regression(sequence_pam_per_gene_grna, count_insertions_gene_
   deletion_rmse = sqrt(mean_squared_error(lin_reg_pred, count_deletions_gene_grna_binary[test_index]))
   del_coeff.append(lin_reg.coef_)
   if to_plot:
-    print np.shape(sequence_pam_per_gene_grna[test_index])
-    print np.shape(lin_reg_pred)
+    #print np.shape(sequence_pam_per_gene_grna[test_index])
+    #print np.shape(lin_reg_pred)
     pvalue_vec = f_regression(sequence_pam_per_gene_grna[test_index], lin_reg_pred, center=True)[1]
     #scores, pvalue_vec = chi2(sequence_pam_per_gene_grna[test_index], lin_reg_pred)
     #pvalue_vec = f_regression(sequence_pam_per_gene_grna[train_index], count_deletions_gene_grna_binary[train_index])[1]
@@ -315,7 +321,7 @@ def cross_validation_model(sequence_pam_per_gene_grna, count_insertions_gene_grn
     fold = 0
     for train_index, test_index in fold_valid.split(sequence_pam_per_gene_grna):
       to_plot = False
-      if repeat == 2 and fold == 0:
+      if repeat == 12 and fold == 0:
         to_plot = True
       score_score = perform_linear_regression(sequence_pam_per_gene_grna, count_insertions_gene_grna, count_deletions_gene_grna, train_index, test_index, ins_coeff, del_coeff, to_plot)
       insertion_avg_r2_score += score_score[0]
@@ -411,19 +417,36 @@ fraction_insertions, fraction_deletions = fraction_of_deletion_insertion(indel_c
 exp_insertion_length, exp_deletion_length = expected_deletion_insertion_length(indel_count_matrix,length_indel_insertion,length_indel_deletion)
 eff_vec = eff_vec_finder(indel_count_matrix,name_genes_grna_unique)
 intron_exon_label_vec = coding_region_finder(name_genes_grna_unique)
+chrom_mat = pickle.load(open('storage/chrom_label_dic.p', 'rb'))
+chrom_mat_name = pickle.load(open('storage/chrom_label_dic_name.p', 'rb'))
+chrom_col = chrom_mat_name.index('GC')
 
-sequence_genom_context_gene_grna, sequence_pam_repeat_per_gene_grna, sequence_pam_coding_gccontent_per_gene_grna, sequence_pam_homop_per_gene_grna , sequence_pam_per_gene_grna, sequence_per_gene_grna, pam_per_gene_grna = load_gene_sequence(sequence_file_name, name_genes_grna_unique,homopolymer_matrix,intron_exon_label_vec)
+
+
+#for chrom_col in range(len(chrom_mat_name)):
+for chrom_col in [len(chrom_mat_name)-2]:
+    if chrom_mat_name[chrom_col] not in  ['GerpRS','bStatistic','fitCons','EncExp','EncNucleo']: #these ones has all nan
+        print "*****"
+        print chrom_mat_name[chrom_col]
+        sequence_genom_context_gene_grna, sequence_pam_chromatin_per_gene_grna, sequence_pam_repeat_per_gene_grna, sequence_pam_coding_gccontent_per_gene_grna, sequence_pam_homop_per_gene_grna , sequence_pam_per_gene_grna, sequence_per_gene_grna, pam_per_gene_grna = load_gene_sequence(sequence_file_name, name_genes_grna_unique,homopolymer_matrix,intron_exon_label_vec,chrom_mat,chrom_col)
+        cross_validation_model(sequence_pam_chromatin_per_gene_grna, eff_vec, eff_vec)
+        #cross_validation_model(sequence_pam_chromatin_per_gene_grna, fraction_insertions, fraction_deletions)
+
+#sequence_genom_context_gene_grna, sequence_pam_chromatin_per_gene_grna, sequence_pam_repeat_per_gene_grna, sequence_pam_coding_gccontent_per_gene_grna, sequence_pam_homop_per_gene_grna , sequence_pam_per_gene_grna, sequence_per_gene_grna, pam_per_gene_grna = load_gene_sequence(sequence_file_name, name_genes_grna_unique,homopolymer_matrix,intron_exon_label_vec,chrom_mat,chrom_col)
 
 
 #print "Using all Genomic Context"
 #cross_validation_model(sequence_genom_context_gene_grna, prop_insertions_gene_grna, prop_deletions_gene_grna)
 #cross_validation_model(sequence_genom_context_gene_grna, eff_vec, eff_vec)
-print "Using both grna sequence and PAM"
-cross_validation_model(sequence_genom_context_gene_grna, eff_vec, eff_vec)
-#cross_validation_model(sequence_pam_repeat_per_gene_grna, fraction_insertions, fraction_deletions)
-#cross_validation_model(sequence_pam_repeat_per_gene_grna, fraction_insertions, fraction_deletions)
 
+#print "Using both grna sequence and PAM"
+#cross_validation_model(sequence_pam_chromatin_per_gene_grna, eff_vec, eff_vec)
+
+#cross_validation_model(sequence_genom_context_gene_grna, eff_vec, eff_vec)
+#cross_validation_model(sequence_pam_repeat_per_gene_grna, fraction_insertions, fraction_deletions)
+#cross_validation_model(sequence_pam_repeat_per_gene_grna, fraction_insertions, fraction_deletions)
 #cross_validation_model(sequence_pam_homop_per_gene_grna, exp_insertion_length, exp_deletion_length)
+
 #print "Using only grna sequence"
 #cross_validation_model(sequence_per_gene_grna, prop_insertions_gene_grna, prop_deletions_gene_grna)
 #print "Using only PAM"
