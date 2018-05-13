@@ -27,8 +27,11 @@ from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_sc
 from simple_linear_model import fraction_of_deletion_insertion, \
   expected_deletion_insertion_length, coding_region_finder, flatness_finder, \
   length_of_repeat_finder
+from sklearn.linear_model import LinearRegression, Lasso, Ridge
 import glob
 import copy
+from sklearn.neural_network import MLPRegressor
+from sklearn.kernel_ridge import KernelRidge
 
 def one_hot_index(nucleotide):
   nucleotide_array = ['A', 'C', 'G', 'T']
@@ -38,7 +41,7 @@ def eff_vec_finder(indel_count_matrix,name_genes_grna_unique):
     num_indel,num_site = np.shape(indel_count_matrix)
     dict_eff = {}
     # Redefined 
-    for filename in glob.glob('Other_Data/muteff/*.txt'):
+    for filename in glob.glob('/Users/amirali/Projects/muteff/*.txt'):
         file = open(filename)
         for line in file:
             if 'RL384' in line:
@@ -56,7 +59,7 @@ def eff_vec_finder(indel_count_matrix,name_genes_grna_unique):
         site_name_list = site_name.split('-')
         eff_vec[site] = dict_eff[site_name_list[1] + '-' + site_name_list[2]]
         site += 1
-
+    
     return eff_vec
 
 def load_gene_sequence(sequence_file_name, 
@@ -101,12 +104,12 @@ def load_gene_sequence(sequence_file_name,
          homop_per_gene_grna,\
          sequence_pam_per_gene_grna
 
-def Kfold_Accuracy(features, labels, model_ins, K=3):
+def Kfold_Accuracy(features, labels, model_ins, K=5, n_repeats=20):
   n_samples = len(labels)
   total_scores = []
   groups = np.linspace(0, n_samples, K+1).astype(int)
   ids = np.arange(n_samples)
-  for repeat in range(10):
+  for repeat in range(n_repeats):
     print("On repeat %d" % repeat)
     np.random.shuffle(ids)
     scores = []
@@ -126,6 +129,8 @@ def Kfold_Accuracy(features, labels, model_ins, K=3):
     print(np.mean(scores, axis=0))
     total_scores.append(np.mean(scores, axis=0))
   print("Mean: %f, STD: %f" % (np.mean(total_scores, axis=0), np.std(total_scores, axis=0)))
+  print(" %.4f ± %0.4f" % (np.mean(total_scores, axis=0), np.std(total_scores, axis=0)))
+
   return np.mean(total_scores, axis=0), np.std(total_scores, axis=0)
 
 if __name__ == "__main__":
@@ -156,7 +161,8 @@ if __name__ == "__main__":
   fraction_insertions, fraction_deletions = fraction_of_deletion_insertion(indel_count_matrix,length_indel_insertion,length_indel_deletion)
   exp_insertion_length, exp_deletion_length = expected_deletion_insertion_length(indel_count_matrix,length_indel_insertion,length_indel_deletion)
   eff_vec = eff_vec_finder(indel_count_matrix,name_genes_grna_unique)
-
+  max_grad = flatness_finder(indel_count_matrix)
+  
   # BUILD FEATURES
   chromatin_f, homop_f, sequence_pam_f = load_gene_sequence(sequence_file_name, 
                                                             name_genes_grna_unique,
@@ -171,8 +177,16 @@ if __name__ == "__main__":
   
   
   # DEFINE MODEL
-  #model_ins = XGBRegressor(n_estimators=500)
-  model_ins = RandomForestRegressor(n_estimators=1000)
+  #model_ins = XGBRegressor(n_estimators=500, max_depth=5)
+  model_ins = RandomForestRegressor(n_estimators=500)
+  #model_ins = LinearRegression()
+  #model_ins = MLPRegressor()
+  #model_ins = KernelRidge()
   
   # RUN MODEL
-  Kfold_Accuracy(feat, eff_vec, model_ins)
+  numbers = []
+  #for fe in [sequence_pam_f, feat]:
+  for fe in [feat]:
+    #for label in [eff_vec, fraction_insertions, exp_insertion_length, exp_deletion_length, max_grad]:
+    for label in [fraction_insertions, exp_insertion_length, exp_deletion_length, max_grad]:
+      numbers.append(Kfold_Accuracy(fe, label, model_ins))

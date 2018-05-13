@@ -20,6 +20,74 @@ from sklearn.cluster import KMeans
 from sklearn.metrics.cluster import adjusted_rand_score
 from sklearn.feature_selection import f_regression
 from sklearn.feature_selection import chi2
+from sklearn.metrics import f1_score
+import csv
+from xgboost import XGBClassifier, XGBRegressor
+from scipy.stats import entropy
+
+def entrop_finder(indel_count_matrix):
+    num_indels, num_sites = np.shape(indel_count_matrix)
+    indel_fraction_mutant_matrix = indel_count_matrix / np.reshape(np.sum(indel_count_matrix, axis=0), (1, -1))
+    entrop = []
+    for col in range(num_sites):
+        vec = np.copy(indel_fraction_mutant_matrix[:, col])
+        vec = np.sort(vec)[::-1]
+        entrop.append(entropy(vec))
+
+    return np.asarray(entrop)
+
+def fraction_of_deletion_insertion(indel_count_matrix,length_indel_insertion,length_indel_deletion):
+  indel_num,site_num = np.shape(indel_count_matrix)
+
+  prop_insertions_gene_grna = np.zeros(site_num,dtype=float)
+  prop_deletions_gene_grna = np.zeros(site_num,dtype=float)
+
+
+  insertion_indicator = np.copy(length_indel_insertion)
+  deletion_indicator = np.copy(length_indel_deletion)
+
+  insertion_indicator[insertion_indicator>0]=1.
+  deletion_indicator[deletion_indicator>0]=1.
+
+  indel_fraction_mutant_matrix = indel_count_matrix / np.reshape(np.sum(indel_count_matrix, axis=0), (1, -1))
+
+  for site_index in range(site_num):
+    prop_insertions_gene_grna[site_index] = np.inner(insertion_indicator,indel_fraction_mutant_matrix[:,site_index])
+    prop_deletions_gene_grna[site_index] = np.inner(deletion_indicator, indel_fraction_mutant_matrix[:, site_index])
+
+  return prop_insertions_gene_grna,prop_deletions_gene_grna
+
+def expected_deletion_insertion_length(indel_count_matrix,length_indel_insertion,length_indel_deletion):
+  indel_num,site_num = np.shape(indel_count_matrix)
+
+  exp_insertion_length = np.zeros(site_num,dtype=float)
+  exp_deletion_length = np.zeros(site_num,dtype=float)
+
+  insertion_indicator = np.copy(length_indel_insertion)
+  deletion_indicator = np.copy(length_indel_deletion)
+
+  insertion_indicator[insertion_indicator>0]=1.
+  deletion_indicator[deletion_indicator>0]=1.
+
+  indel_fraction_mutant_matrix = indel_count_matrix / np.reshape(np.sum(indel_count_matrix, axis=0), (1, -1))
+
+  insertion_only_fraction_matrix =  np.multiply(indel_fraction_mutant_matrix, np.reshape(insertion_indicator,(-1,1)) )
+  deletion_only_fraction_matrix = np.multiply(indel_fraction_mutant_matrix,  np.reshape(deletion_indicator,(-1,1)) )
+
+  insertion_only_fraction_matrix = insertion_only_fraction_matrix / np.reshape(np.sum(insertion_only_fraction_matrix, axis=0), (1, -1))
+  deletion_only_fraction_matrix = deletion_only_fraction_matrix / np.reshape(np.sum(deletion_only_fraction_matrix, axis=0), (1, -1))
+
+
+  for site_index in range(site_num):
+    exp_insertion_length[site_index] = np.inner(length_indel_insertion,insertion_only_fraction_matrix[:,site_index])
+    exp_deletion_length[site_index] = np.inner(length_indel_deletion, deletion_only_fraction_matrix[:, site_index])
+
+  # some sites do not get any insertions. this cuase nan. we make those entries zero.
+  for i in range(np.size(exp_insertion_length)):
+    if np.isnan(exp_insertion_length[i]):
+      exp_insertion_length[i] = 0
+
+  return exp_insertion_length,exp_deletion_length
 
 
 def top_indel_finder(indel_count_matrix,name_indel_type_unique):
@@ -292,8 +360,7 @@ def load_gene_sequence_k_mer(sequence_file_name, name_genes_grna_unique, k):
   return k_mer_list
 
 
-def perform_logistic_regression(sequence_pam_per_gene_grna, count_insertions_gene_grna_binary, count_deletions_gene_grna_binary, train_index, test_index, ins_coeff, del_coeff, to_plot = False):
-  log_reg = linear_model.LogisticRegression(penalty='l2', C=1000)
+def perform_logistic_regression(sequence_pam_per_gene_grna, count_insertions_gene_grna_binary, count_deletions_gene_grna_binary, train_index, test_index, ins_coeff, del_coeff,log_reg, to_plot = False):
   #print "----"
   #print "Number of positive testing samples in insertions is %f" % np.sum(count_insertions_gene_grna_binary[test_index])
   #print "Total number of testing samples %f" % np.size(test_index)
@@ -303,16 +370,17 @@ def perform_logistic_regression(sequence_pam_per_gene_grna, count_insertions_gen
   log_reg_pred = log_reg.predict(sequence_pam_per_gene_grna[test_index])
   log_reg_pred_train = log_reg.predict(sequence_pam_per_gene_grna[train_index])
   insertions_accuracy = metrics.accuracy_score(count_insertions_gene_grna_binary[test_index], log_reg_pred)
-  ins_coeff.append(log_reg.coef_[0, :])
-  if to_plot:
-    #plt.plot(log_reg.coef_[0, 0:92])
-    #plt.savefig('ins_log_coeff.pdf')
-    #plt.clf()
-    #pvalue_vec = f_regression(sequence_pam_per_gene_grna[test_index], log_reg_pred)[1]
-    scores, pvalue_vec = chi2(sequence_pam_per_gene_grna[test_index], log_reg_pred)
-    plot_seq_logo(-np.log10(pvalue_vec), "Insertion_logistic_pvalue")
-    print -np.log10(pvalue_vec)[-4:]
-    plot_seq_logo(log_reg.coef_[0, :], "Insertion_logistic")
+  insertions_f1 = f1_score(count_insertions_gene_grna_binary[test_index], log_reg_pred)
+  # ins_coeff.append(log_reg.coef_[0, :])
+  # if to_plot:
+  #   #plt.plot(log_reg.coef_[0, 0:92])
+  #   #plt.savefig('ins_log_coeff.pdf')
+  #   #plt.clf()
+  #   #pvalue_vec = f_regression(sequence_pam_per_gene_grna[test_index], log_reg_pred)[1]
+  #   scores, pvalue_vec = chi2(sequence_pam_per_gene_grna[test_index], log_reg_pred)
+  #   plot_seq_logo(-np.log10(pvalue_vec), "Insertion_logistic_pvalue")
+  #   print -np.log10(pvalue_vec)[-4:]
+  #   plot_seq_logo(log_reg.coef_[0, :], "Insertion_logistic")
 
     #plot_interaction_network(log_reg.coef_[0, 92:], "Insertion_logistic")
 
@@ -327,34 +395,39 @@ def perform_logistic_regression(sequence_pam_per_gene_grna, count_insertions_gen
   log_reg_pred = log_reg.predict(sequence_pam_per_gene_grna[test_index])
   log_reg_pred_train = log_reg.predict(sequence_pam_per_gene_grna[train_index])
   deletions_accuracy = metrics.accuracy_score(count_deletions_gene_grna_binary[test_index], log_reg_pred)
-  del_coeff.append(log_reg.coef_[0, :])
-  if to_plot:
-    #plt.plot(log_reg.coef_[0, 0:92])
-    #plt.savefig('del_log_coeff.pdf')
-    #plt.clf()
-    #pvalue_vec = f_regression(sequence_pam_per_gene_grna[test_index], log_reg_pred)[1]
-    scores, pvalue_vec = chi2(sequence_pam_per_gene_grna[test_index], log_reg_pred)
-    plot_seq_logo(-np.log10(pvalue_vec), "Deletion_logistic_pvalue")
-    plot_seq_logo(log_reg.coef_[0, :], "Deletion_logistic")
-    print -np.log10(pvalue_vec)[-4:]
+  deletions_f1 = f1_score(count_deletions_gene_grna_binary[test_index], log_reg_pred)
+  # del_coeff.append(log_reg.coef_[0, :])
+  # if to_plot:
+  #   #plt.plot(log_reg.coef_[0, 0:92])
+  #   #plt.savefig('del_log_coeff.pdf')
+  #   #plt.clf()
+  #   #pvalue_vec = f_regression(sequence_pam_per_gene_grna[test_index], log_reg_pred)[1]
+  #   scores, pvalue_vec = chi2(sequence_pam_per_gene_grna[test_index], log_reg_pred)
+  #   plot_seq_logo(-np.log10(pvalue_vec), "Deletion_logistic_pvalue")
+  #   plot_seq_logo(log_reg.coef_[0, :], "Deletion_logistic")
+  #   print -np.log10(pvalue_vec)[-4:]
     #plot_interaction_network(log_reg.coef_[0, 92:], "Deletion_logistic")
   #print log_reg_pred
   #print "Test accuracy score for deletions: %f" % deletions_accuracy
   #print "Train accuracy score for deletions: %f" % metrics.accuracy_score(count_deletions_gene_grna_binary[train_index], log_reg_pred_train)
-  return insertions_accuracy, deletions_accuracy
+  return insertions_accuracy, deletions_accuracy, insertions_f1, deletions_f1
 
 
-def cross_validation_model(sequence_pam_per_gene_grna, count_insertions_gene_grna, count_deletions_gene_grna):
+def cross_validation_model(sequence_pam_per_gene_grna, count_insertions_gene_grna, count_deletions_gene_grna,log_reg):
   total_insertion_avg_accuracy = []
   total_deletion_avg_accuracy = []
+  total_insertion_avg_f1 = []
+  total_deletion_avg_f1 = []
   ins_coeff = []
   del_coeff = []
-  for repeat in range(100):
-    #print "repeat ", repeat
-    number_of_splits = 3
+  for repeat in range(10):
+    print "repeat ", repeat
+    number_of_splits = 5
     fold_valid = KFold(n_splits = number_of_splits, shuffle = True, random_state = repeat)
     insertion_avg_accuracy = 0.0
     deletion_avg_accuracy = 0.0
+    insertion_avg_f1 = 0.0
+    deletion_avg_f1 = 0.0
 
     # threshold_insertions = 1
     count_insertions_gene_grna_binary = np.copy(count_insertions_gene_grna)
@@ -369,20 +442,32 @@ def cross_validation_model(sequence_pam_per_gene_grna, count_insertions_gene_grn
       to_plot = False
       if repeat == 1 and fold == 1:
         to_plot = True
-      accuracy_score = perform_logistic_regression(sequence_pam_per_gene_grna, count_insertions_gene_grna_binary, count_deletions_gene_grna_binary, train_index, test_index, ins_coeff, del_coeff, to_plot)
+      accuracy_score = perform_logistic_regression(sequence_pam_per_gene_grna, count_insertions_gene_grna_binary, count_deletions_gene_grna_binary, train_index, test_index, ins_coeff, del_coeff,log_reg, to_plot)
       insertion_avg_accuracy += accuracy_score[0]
       deletion_avg_accuracy += accuracy_score[1]
+      insertion_avg_f1 += accuracy_score[2]
+      deletion_avg_f1 += accuracy_score[3]
       fold += 1
     insertion_avg_accuracy /= float(number_of_splits)
     deletion_avg_accuracy /= float(number_of_splits)
+    insertion_avg_f1 /= float(number_of_splits)
+    deletion_avg_f1 /= float(number_of_splits)
     total_insertion_avg_accuracy.append(insertion_avg_accuracy)
     total_deletion_avg_accuracy.append(deletion_avg_accuracy)
+    total_insertion_avg_f1.append(insertion_avg_f1)
+    total_deletion_avg_f1.append(deletion_avg_f1)
 
-
+  print "--"
   print "Average accuracy for insertions predictions is %f" % np.mean(total_insertion_avg_accuracy)
   print "Std in accuracy for insertions predictions is %f" % np.std(total_insertion_avg_accuracy)
   print "Average accuracy for deletions predictions is %f" % np.mean(total_deletion_avg_accuracy)
   print "Std in accuracy for deletions predictions is %f" % np.std(total_deletion_avg_accuracy)
+  print "--"
+  print "Average f1 for insertions predictions is %f" % np.mean(total_insertion_avg_f1)
+  print "Std in f1 for insertions predictions is %f" % np.std(total_insertion_avg_f1)
+  print "Average f1 for deletions predictions is %f" % np.mean(total_deletion_avg_f1)
+  print "Std in f1 for deletions predictions is %f" % np.std(total_deletion_avg_f1)
+  print "--"
 
 
   ins_coeff = np.array(ins_coeff)
@@ -402,69 +487,39 @@ sequence_file_name = "sequence_pam_gene_grna_big_file_donor_genomic_context.csv"
 #data_folder = "/Users/amirali/Projects/CRISPR-data/R data/AM_TechMerg_Summary/"
 data_folder = "/Users/amirali/Projects/CRISPR-data-Feb18/20nt_counts_only/"
 
-# name_genes_unique, name_genes_grna_unique, name_indel_type_unique, indel_count_matrix, indel_prop_matrix, length_indel_insertion, length_indel_deletion = preprocess_indel_files(data_folder)
-# print "name_genes_unique"
-# print np.shape(name_genes_unique)
-# print "name_genes_grna_unique"
-# print np.shape(name_genes_grna_unique)
-# print "name_indel_type_unique"
-# print np.shape(name_indel_type_unique)
-# print "indel_count_matrix"
-# print np.shape(indel_count_matrix)
-# print "indel_prop_matrix"
-# print np.shape(indel_prop_matrix)
-# print "length_indel"
-# print np.shape(length_indel)
-
-
-# pickle.dump(name_genes_unique, open('storage/name_genes_unique.p', 'wb'))
-# pickle.dump(name_genes_grna_unique, open('storage/name_genes_grna_unique.p', 'wb'))
-# pickle.dump(name_indel_type_unique, open('storage/name_indel_type_unique.p', 'wb'))
-# pickle.dump(indel_count_matrix, open('storage/indel_count_matrix.p', 'wb'))
-# pickle.dump(indel_prop_matrix, open('storage/indel_prop_matrix.p', 'wb'))
-# pickle.dump(length_indel_insertion, open('storage/length_indel_insertion.p', 'wb'))
-# pickle.dump(length_indel_deletion, open('storage/length_indel_deletion.p', 'wb'))
-
-print "loading name_genes_grna_unique ..."
-name_genes_grna_unique = pickle.load(open('storage/name_genes_grna_unique_one_patient_per_site.p', 'rb'))
-#name_genes_grna_unique = pickle.load(open('storage/name_genes_grna_unique.p', 'rb'))
-print "loading name_indel_type_unique ..."
-name_indel_type_unique = pickle.load(open('storage/name_indel_type_unique.p', 'rb'))
-print "loading indel_count_matrix ..."
-indel_count_matrix = pickle.load(open('storage/indel_count_matrix_one_patient_per_site.p', 'rb'))
-#indel_count_matrix = pickle.load(open('storage/indel_count_matrix.p', 'rb'))
-print "loading indel_prop_matrix ..."
-indel_prop_matrix = pickle.load(open('storage/indel_prop_matrix_one_patient_per_site.p', 'rb'))
-#indel_prop_matrix = pickle.load(open('storage/indel_prop_matrix.p', 'rb'))
-print "loading length_indel ..."
-length_indel_insertion = pickle.load(open('storage/length_indel_insertion.p', 'rb'))
-length_indel_deletion = pickle.load(open('storage/length_indel_deletion.p', 'rb'))
-print "loading homopolymer matrix"
-homopolymer_matrix = pickle.load(open('storage/homopolymer_matrix_w-3:3.p', 'rb'))
-
+name_genes_grna_unique = pickle.load(open('Tcell-files/name_genes_grna_UNIQUE.p', 'rb'))
+name_indel_type_unique = pickle.load(open('Tcell-files/name_indel_type_ALL.p', 'rb'))
+indel_count_matrix = pickle.load(open('Tcell-files/indel_count_matrix_UNIQUE.p', 'rb'))
+indel_prop_matrix = pickle.load(open('Tcell-files/indel_prop_matrix_UNIQUE.p', 'rb'))
+length_indel_insertion = pickle.load(open('Tcell-files/length_indel_insertion_ALL.p', 'rb'))
+length_indel_deletion = pickle.load(open('Tcell-files/length_indel_deletion_ALL.p', 'rb'))
+homopolymer_matrix = pickle.load(open('Tcell-files/homology_matrix_UNIQUE.p', 'rb'))
+my_eff_vec = pickle.load(open('Tcell-files/my_eff_vec_UNIQUE_no_others.p', 'rb'))
+my_eff_vec = np.asarray(my_eff_vec)
 
 #indel_set_matrix,jaccard_matrix,unique_patient_per_site_index_list = variation_patients_and_lump(indel_count_matrix,sequence_file_name, name_genes_grna_unique)
-# indel_count_matrix = np.delete(indel_count_matrix, unique_patient_per_site_index_list, 1)
-# indel_prop_matrix = np.delete(indel_prop_matrix, unique_patient_per_site_index_list, 1)
-# name_genes_grna_unique = list(np.delete(name_genes_grna_unique, unique_patient_per_site_index_list, 0))
-# pickle.dump(name_genes_grna_unique, open('storage/name_genes_grna_unique_one_patient_per_site.p', 'wb'))
-# pickle.dump(indel_count_matrix, open('storage/indel_count_matrix_one_patient_per_site.p', 'wb'))
-# pickle.dump(indel_prop_matrix, open('storage/indel_prop_matrix_one_patient_per_site.p', 'wb'))
 
-
+fraction_insertions, fraction_deletions = fraction_of_deletion_insertion(indel_count_matrix,length_indel_insertion,length_indel_deletion)
+exp_insertion_length, exp_deletion_length = expected_deletion_insertion_length(indel_count_matrix,length_indel_insertion,length_indel_deletion)
 count_insertions_gene_grna, count_deletions_gene_grna = compute_summary_statistics(name_genes_grna_unique, name_indel_type_unique, indel_count_matrix, indel_prop_matrix)
-
 sequence_genom_context_gene_grna,sequence_pam_homop_per_gene_grna,sequence_pam_per_gene_grna, sequence_per_gene_grna, pam_per_gene_grna = load_gene_sequence(sequence_file_name, name_genes_grna_unique,homopolymer_matrix)
-#sequence_pam_per_gene_grna = load_gene_sequence_interaction(sequence_file_name, name_genes_grna_unique)
+sequence_pam_per_gene_grna = load_gene_sequence_interaction(sequence_file_name, name_genes_grna_unique)
 top_indel_vector = top_indel_finder(indel_count_matrix,name_indel_type_unique)
+entrop = entrop_finder(indel_count_matrix)
+
+
+#log_reg = linear_model.LogisticRegression(penalty='l2', C=1000)
+log_reg = XGBClassifier(n_estimators=30, max_depth=1)
 
 #print "Using all genomic context"
 #cross_validation_model(sequence_genom_context_gene_grna, count_insertions_gene_grna, count_deletions_gene_grna)
 #cross_validation_model(sequence_genom_context_gene_grna, top_indel_vector, top_indel_vector)
-print "Using both Spacer and PAM"
+#print "Using both Spacer and PAM"
 #cross_validation_model(sequence_pam_homop_per_gene_grna, top_indel_vector, top_indel_vector)
-print count_insertions_gene_grna
-cross_validation_model(sequence_pam_homop_per_gene_grna, count_insertions_gene_grna, count_deletions_gene_grna)
+#cross_validation_model(sequence_pam_homop_per_gene_grna, top_indel_vector, top_indel_vector)
+#print np.shape(sequence_pam_per_gene_grna)
+#print count_insertions_gene_grna
+#cross_validation_model(sequence_pam_homop_per_gene_grna, count_insertions_gene_grna, count_deletions_gene_grna)
 #print "Using only Spacer"
 #cross_validation_model(sequence_per_gene_grna, count_insertions_gene_grna, count_deletions_gene_grna)
 #print "Using only PAM"
@@ -473,3 +528,68 @@ cross_validation_model(sequence_pam_homop_per_gene_grna, count_insertions_gene_g
 #k_mer_list = load_gene_sequence_k_mer(sequence_file_name, name_genes_grna_unique, 3)
 #cross_validation_model(k_mer_list, count_insertions_gene_grna, count_deletions_gene_grna)
 
+my_eff_vec_binary_tcel = np.zeros(len(name_genes_grna_unique))
+my_eff_vec_binary_tcel[my_eff_vec>np.median(my_eff_vec)]=1
+
+# entropy_binary = np.zeros(len(name_genes_grna_unique))
+# entropy_binary[entrop>np.median(entrop)] = 1
+
+print "number of + samples in insertions is ", np.sum(my_eff_vec_binary_tcel)
+print "number of - samples in insertions is ", np.shape(name_genes_grna_unique)[0] - np.sum(my_eff_vec_binary_tcel)
+
+
+cross_validation_model(sequence_pam_per_gene_grna, my_eff_vec_binary_tcel, my_eff_vec_binary_tcel,log_reg)
+
+
+
+
+
+#### here we run insertion accuracy
+#
+# exp_insertion_length_binary = np.zeros(len(name_genes_grna_unique))
+#
+# okay_insertion_index = list(set(np.where(exp_insertion_length>0)[0]))
+# ###
+# #okay_insertion_index = list(set(np.where(fraction_insertions>0.1)[0]))
+# ###
+# print "insertion mean = ", np.mean(exp_insertion_length[okay_insertion_index])
+# print "insertion median =", np.median(exp_insertion_length[okay_insertion_index])
+#
+# exp_insertion_length_binary[exp_insertion_length>np.median(exp_insertion_length[okay_insertion_index])] = 1
+#
+#
+#
+# exp_insertion_length_binary = exp_insertion_length_binary[okay_insertion_index]
+# sequence_pam_per_gene_grna = sequence_pam_per_gene_grna[okay_insertion_index,:]
+#
+# print np.shape(exp_insertion_length_binary)
+# print np.shape(sequence_pam_per_gene_grna)
+#
+# print "number of + samples in insertions is ", np.sum(exp_insertion_length_binary)
+# print "number of - samples in insertions is ", np.shape(exp_insertion_length_binary)[0] - np.sum(exp_insertion_length_binary)
+# cross_validation_model(sequence_pam_per_gene_grna, exp_insertion_length_binary, exp_insertion_length_binary,log_reg)
+
+
+# exp_deletion_length_binary = np.zeros(len(name_genes_grna_unique))
+# print "deletion mean = ", np.mean(exp_deletion_length)
+# print "deletion median =", np.median(exp_deletion_length)
+# exp_deletion_length_binary[exp_deletion_length> np.median(exp_deletion_length)] = 1
+# cross_validation_model(sequence_pam_per_gene_grna, exp_deletion_length_binary, exp_deletion_length_binary,log_reg)
+
+
+########
+
+#
+# okay_insertion_index = list(set(np.where(fraction_deletions >0)[0]))
+# toplot = np.copy(exp_deletion_length)
+# toplot = toplot[okay_insertion_index]
+# plt.hist(toplot, bins=100)
+# plt.savefig('plots/Expected_deletion_length_hist.pdf')
+# plt.clf()
+#
+# print "deletion mean = ", np.mean(exp_deletion_length)
+# print "deletion median =", np.median(exp_deletion_length)
+#
+# # plt.hist(exp_deletion_length)
+# # plt.savefig('plots/Expected_deletion_length_hist.pdf')
+# # plt.clf()

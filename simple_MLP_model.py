@@ -267,7 +267,10 @@ def perform_linear_regression(sequence_pam_per_gene_grna, count_insertions_gene_
   # good setting got spacer + pam + homo
   # clf = MLPRegressor(solver='lbfgs', alpha=1e-2, hidden_layer_sizes = (20,), random_state = 1)
   # good setting got spacer + pam
-  clf = MLPRegressor(solver='lbfgs', alpha=1e-3, hidden_layer_sizes = (20,), random_state = 1)
+  # clf = MLPRegressor(solver='lbfgs', alpha=1e-3, hidden_layer_sizes = (20,), random_state = 1)
+  # good setting to predict exp insertion/deleion length
+  clf = MLPRegressor(solver='lbfgs', alpha=1e-4, hidden_layer_sizes = (1,), random_state = 1)
+
   clf.fit(sequence_pam_per_gene_grna[train_index], count_insertions_gene_grna_binary[train_index])
   clf_pred = clf.predict(sequence_pam_per_gene_grna[test_index])
 
@@ -313,7 +316,7 @@ def cross_validation_model(sequence_pam_per_gene_grna, count_insertions_gene_grn
 
   ins_coeff = []
   del_coeff = []
-  for repeat in range(30):
+  for repeat in range(10):
     number_of_splits = 3
     fold_valid = KFold(n_splits = number_of_splits, shuffle = True, random_state = repeat)
     insertion_avg_r2_score = 0.0
@@ -449,9 +452,11 @@ sequence_genom_context_gene_grna, sequence_pam_chromatin_per_gene_grna, sequence
 
 # cross_validation_model(sequence_pam_per_gene_grna, max_grad, max_grad)
 #cross_validation_model(sequence_pam_per_gene_grna, eff_vec, eff_vec)
-cross_validation_model(sequence_pam_per_gene_grna, fraction_insertions, fraction_deletions)
+#cross_validation_model(sequence_pam_per_gene_grna, fraction_insertions, fraction_deletions)
 #cross_validation_model(sequence_pam_homop_per_gene_grna, fraction_deletions, fraction_deletions)
+
 #cross_validation_model(sequence_pam_homop_per_gene_grna, exp_insertion_length, exp_deletion_length)
+cross_validation_model(sequence_pam_homop_per_gene_grna, exp_deletion_length, exp_deletion_length)
 
 #print "Using only grna sequence"
 #cross_validation_model(sequence_per_gene_grna, prop_insertions_gene_grna, prop_deletions_gene_grna)
