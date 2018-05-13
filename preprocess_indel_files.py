@@ -57,6 +57,9 @@ def preprocess_indel_files(data_folder):
   indel_count_matrix = np.zeros((len(name_indel_type_unique), len(name_genes_grna_unique)))
   length_indel_insertion = np.zeros(len(name_indel_type_unique), dtype = int)
   length_indel_deletion = np.zeros(len(name_indel_type_unique), dtype=int)
+  no_variant_vec = np.zeros(len(name_genes_grna_unique))
+  other_vec = np.zeros(len(name_genes_grna_unique))
+  snv_vec = np.zeros(len(name_genes_grna_unique))
 
   for each_file in glob.glob(count_data_folder + "counts-*.txt"):
     #print each_file
@@ -102,15 +105,31 @@ def preprocess_indel_files(data_folder):
               if l[j] != 'NA':
                 indel_count_matrix[row_index,col_index[j]] = float(l[j])
                 #print row_index,col_index[j]
+          if 'variant' in line:
+            for j in range(np.size(l)):
+              if l[j] != 'NA':
+                no_variant_vec[col_index[j]] += float(l[j])
+
+          if 'Other' in line:
+            for j in range(np.size(l)):
+              if l[j] != 'NA':
+                other_vec[col_index[j]] += float(l[j])
+
+          if 'SNV' in line:
+            for j in range(np.size(l)):
+              if l[j] != 'NA':
+                snv_vec[col_index[j]] += float(l[j])
+
+
 
         i += 1
 
-  # finding the index for the indels with frequency of mutatnt reads < 0.01
-  rare_indel_index = []
-  indel_frac_mutant_read_matrix = indel_count_matrix / np.reshape(np.sum(indel_count_matrix, axis=0), (1, -1))
-  for row_index in range(np.shape(indel_frac_mutant_read_matrix)[0]):
-    if max(indel_frac_mutant_read_matrix[row_index]) < 0.01:
-      rare_indel_index.append(row_index)
+  # # finding the index for the indels with frequency of mutatnt reads < 0.01
+  # rare_indel_index = []
+  # indel_frac_mutant_read_matrix = indel_count_matrix / np.reshape(np.sum(indel_count_matrix, axis=0), (1, -1))
+  # for row_index in range(np.shape(indel_frac_mutant_read_matrix)[0]):
+  #   if max(indel_frac_mutant_read_matrix[row_index]) < 0.01:
+  #     rare_indel_index.append(row_index)
 
 
   ##
@@ -154,15 +173,15 @@ def preprocess_indel_files(data_folder):
         i += 1
 
 
-  ######
-  ###### here we filter out all indels with mutant read frequency less than 0.01
-  ######
-  name_indel_type_unique = np.delete(name_indel_type_unique, rare_indel_index).tolist()
-  indel_count_matrix = np.delete(indel_count_matrix, rare_indel_index, 0)
-  indel_prop_matrix = np.delete(indel_prop_matrix, rare_indel_index, 0)
-  length_indel_insertion = np.delete(length_indel_insertion, rare_indel_index, 0)
-  length_indel_deletion = np.delete(length_indel_deletion, rare_indel_index, 0)
-  ######
+  # ######
+  # ###### here we filter out all indels with mutant read frequency less than 0.01
+  # ######
+  # name_indel_type_unique = np.delete(name_indel_type_unique, rare_indel_index).tolist()
+  # indel_count_matrix = np.delete(indel_count_matrix, rare_indel_index, 0)
+  # indel_prop_matrix = np.delete(indel_prop_matrix, rare_indel_index, 0)
+  # length_indel_insertion = np.delete(length_indel_insertion, rare_indel_index, 0)
+  # length_indel_deletion = np.delete(length_indel_deletion, rare_indel_index, 0)
+  # ######
 
 
   ######
@@ -177,20 +196,17 @@ def preprocess_indel_files(data_folder):
   indel_count_matrix = np.delete(indel_count_matrix, low_read_index, 1)
   indel_prop_matrix = np.delete(indel_prop_matrix, low_read_index, 1)
   name_genes_grna_unique = list(np.delete(name_genes_grna_unique, low_read_index, 0))
+
+  no_variant_vec = np.delete(no_variant_vec, low_read_index)
+  other_vec = np.delete(other_vec, low_read_index)
+  snv_vec = np.delete(snv_vec, low_read_index)
+
   ######
 
 
 
-  # Save the indel counts, indel type, and gene-grna name information
-  indel_type_file = open('indel_type.txt', 'w')
-  for indel_type in name_indel_type_unique:
-    indel_type_file.write("%s\n" % indel_type)
-  genes_grna_file = open('genes_grna.txt', 'w')
-  for genes_grna in name_genes_grna_unique:
-    genes_grna_file.write("%s\n" % genes_grna)
-  #np.savetxt("indel_count_matrix.txt", indel_count_matrix)
-  #np.savetxt("indel_prop_matrix.txt", indel_prop_matrix)
 
-  return name_genes_unique, name_genes_grna_unique, name_indel_type_unique, indel_count_matrix, indel_prop_matrix, length_indel_insertion, length_indel_deletion
+
+  return name_genes_unique, name_genes_grna_unique, name_indel_type_unique, indel_count_matrix, indel_prop_matrix, no_variant_vec, other_vec, snv_vec,  length_indel_insertion, length_indel_deletion
   #return name_genes_unique, name_genes_grna_unique, name_indel_type_unique , indel_count_matrix
 

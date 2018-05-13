@@ -311,7 +311,6 @@ prop_insertions_gene_grna, prop_deletions_gene_grna = my_length_finder(indel_cou
 sequence_genom_context_gene_grna, sequence_pam_per_gene_grna, sequence_per_gene_grna, pam_per_gene_grna = load_gene_sequence(sequence_file_name, name_genes_grna_unique)
 r2_insertion_no_polymer, r2_deletion_no_polymer, std_r2_insertion_no_polymer, std_r2_deletion_no_polymer, rmse_insertion_no_polymer, rmse_deletion_no_polymer, ins_coef, del_coef = cross_validation_model(sequence_genom_context_gene_grna, prop_insertions_gene_grna, prop_deletions_gene_grna, number_of_repeats)
 
-
 insertion_rmse_list = np.zeros((4,max_polymer_length-1))
 insertion_r2_list = np.zeros((4,max_polymer_length-1))
 insertion_r2_list_std = np.zeros((4,max_polymer_length-1))

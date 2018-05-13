@@ -40,21 +40,21 @@ data_folder = "/Users/amirali/Projects/CRISPR-data-Feb18/20nt_counts_only/"
 # length_indel_insertion = pickle.load(open('storage/length_indel_insertion_BIG.p', 'rb'))
 # length_indel_deletion = pickle.load(open('storage/length_indel_deletion_BIG.p', 'rb'))
 #
-# eff_vec = np.sum(indel_count_matrix,axis=0) / (np.sum(indel_count_matrix,axis=0)+no_variant_vec+snv_vec)
-# pickle.dump(eff_vec, open('storage/eff_vec_BIG_no_others.p', 'wb'))
+# eff_vec = (np.sum(indel_count_matrix,axis=0) + other_vec) / (np.sum(indel_count_matrix,axis=0)+no_variant_vec+snv_vec)
+# pickle.dump(eff_vec, open('storage/eff_vec_BIG_others_in_numinator.p', 'wb'))
 
+########
 
-
-name_genes_grna_BIG = pickle.load(open('storage/name_genes_grna_unique_BIG.p', 'rb'))
-name_genes_grna_Tcell = pickle.load(open('Tcell-files/name_genes_grna_UNIQUE.p', 'rb'))
-eff_vec_BIG = pickle.load(open('storage/eff_vec_BIG_no_others.p', 'rb'))
-
-eff_vec = []
-for file in name_genes_grna_Tcell:
-    print file
-    eff_vec.append(eff_vec_BIG[np.where(np.asarray(name_genes_grna_BIG)==file)[0]][0] )
-
-
-print eff_vec
-print np.shape(eff_vec)
-pickle.dump(eff_vec, open('Tcell-files/my_eff_vec_UNIQUE_no_others.p', 'wb'))
+# name_genes_grna_BIG = pickle.load(open('storage/name_genes_grna_unique_BIG.p', 'rb'))
+# name_genes_grna_Tcell = pickle.load(open('Tcell-files/name_genes_grna_UNIQUE.p', 'rb'))
+# eff_vec_BIG = pickle.load(open('storage/eff_vec_BIG_others_in_numinator.p', 'rb'))
+#
+# eff_vec = []
+# for file in name_genes_grna_Tcell:
+#     print file
+#     eff_vec.append(eff_vec_BIG[np.where(np.asarray(name_genes_grna_BIG)==file)[0]][0] )
+#
+#
+# print eff_vec
+# print np.shape(eff_vec)
+# pickle.dump(eff_vec, open('Tcell-files/my_eff_vec_UNIQUE_others_in_numinator.p', 'wb'))

@@ -19,6 +19,7 @@ from scipy import stats
 from sklearn.feature_selection import chi2
 import copy
 from sklearn.neural_network import MLPRegressor
+import time
 
 
 
@@ -263,40 +264,26 @@ def load_gene_sequence_k_mer(sequence_file_name, name_genes_grna_unique, k):
 
 def perform_linear_regression(sequence_pam_per_gene_grna, count_insertions_gene_grna_binary, count_deletions_gene_grna_binary, train_index, test_index, ins_coeff, del_coeff, to_plot = False):
 
-  # good for edit eff
-  #lin_reg = linear_model.Ridge(alpha=200)
-  # good for fractions
-  lin_reg = linear_model.Ridge(alpha=1)
-  #print "----"
-  #print "Number of positive testing samples in insertions is %f" % np.sum(count_insertions_gene_grna_binary[test_index])
-  #print "Total number of testing samples %f" % np.size(test_index)
-  #print "Number of positive training samples in insertions is %f" % np.sum(count_insertions_gene_grna_binary[train_index])
-  #print "Total number of training samples %f" % np.size(train_index)
-  lin_reg.fit(sequence_pam_per_gene_grna[train_index], count_insertions_gene_grna_binary[train_index])
-  lin_reg_pred = lin_reg.predict(sequence_pam_per_gene_grna[test_index])
-  insertions_r2_score = lin_reg.score(sequence_pam_per_gene_grna[test_index], count_insertions_gene_grna_binary[test_index])
-  insertion_rmse = sqrt(mean_squared_error(lin_reg_pred,count_insertions_gene_grna_binary[test_index]))
-  ins_coeff.append(lin_reg.coef_)
-  if to_plot:
-    pvalue_vec = f_regression(sequence_pam_per_gene_grna[test_index],lin_reg_pred, center=True)[1]
-    #print np.shape(sequence_pam_per_gene_grna[test_index])
-    #print np.shape(lin_reg_pred)
-    #scores, pvalue_vec = chi2(sequence_pam_per_gene_grna[test_index], lin_reg_pred)
-    #pvalue_vec = f_regression(sequence_pam_per_gene_grna[train_index], count_deletions_gene_grna_binary[train_index])[1]
-    plot_QQ(lin_reg_pred,count_insertions_gene_grna_binary[test_index],'QQ_linear_insertion')
-    plot_seq_logo(lin_reg.coef_, "Insertion_linear")
-    plot_seq_logo(-np.log10(pvalue_vec), "Insertion_linear_pvalue")
-    print 'Insertion -log10(p-value) of last 4 entries', -np.log10(pvalue_vec)[-4:]
-    print 'Insertion last four coefficients', lin_reg.coef_[-4:]
+  # good setting got spacer + pam + homo
+  # clf = MLPRegressor(solver='lbfgs', alpha=1e-2, hidden_layer_sizes = (20,), random_state = 1)
+  # good setting got spacer + pam
+  clf = MLPRegressor(solver='lbfgs', alpha=1e-3, hidden_layer_sizes = (20,), random_state = 1)
+  clf.fit(sequence_pam_per_gene_grna[train_index], count_insertions_gene_grna_binary[train_index])
+  clf_pred = clf.predict(sequence_pam_per_gene_grna[test_index])
 
-  #insertions_r2_score = lin_reg.score(sequence_pam_per_gene_grna[test_index], count_insertions_gene_grna_binary[test_index])
-  #print "Test mse_score score for insertions: %f" % insertions_r2_score
-  #print "Train mse_score score for insertions: %f" % lin_reg.score(sequence_pam_per_gene_grna[train_index], count_insertions_gene_grna_binary[train_index])
-  #print "----"
-  #print "Number of positive testing samples in deletions is %f" % np.sum(count_deletions_gene_grna_binary[test_index])
-  #print "Total number of testing samples %f" % np.size(test_index)
-  #print "Number of positive training samples in deletions is %f" % np.sum(count_deletions_gene_grna_binary[train_index])
-  #print "Total number of training samples %f" % np.size(train_index)
+  insertions_r2_score = clf.score(sequence_pam_per_gene_grna[test_index], count_insertions_gene_grna_binary[test_index])
+  insertion_rmse = sqrt(mean_squared_error(clf_pred,count_insertions_gene_grna_binary[test_index]))
+
+  # if to_plot:
+  #   pvalue_vec = f_regression(sequence_pam_per_gene_grna[test_index],lin_reg_pred, center=True)[1]
+  #   plot_QQ(lin_reg_pred,count_insertions_gene_grna_binary[test_index],'QQ_linear_insertion')
+  #   plot_seq_logo(lin_reg.coef_, "Insertion_linear")
+  #   plot_seq_logo(-np.log10(pvalue_vec), "Insertion_linear_pvalue")
+  #   print 'Insertion -log10(p-value) of last 4 entries', -np.log10(pvalue_vec)[-4:]
+  #   print 'Insertion last four coefficients', lin_reg.coef_[-4:]
+
+
+  lin_reg = linear_model.Ridge(alpha=1)
   lin_reg.fit(sequence_pam_per_gene_grna[train_index], count_deletions_gene_grna_binary[train_index])
   lin_reg_pred = lin_reg.predict(sequence_pam_per_gene_grna[test_index])
   deletions_r2_score = lin_reg.score(sequence_pam_per_gene_grna[test_index], count_deletions_gene_grna_binary[test_index])
@@ -326,7 +313,7 @@ def cross_validation_model(sequence_pam_per_gene_grna, count_insertions_gene_grn
 
   ins_coeff = []
   del_coeff = []
-  for repeat in range(100):
+  for repeat in range(30):
     number_of_splits = 3
     fold_valid = KFold(n_splits = number_of_splits, shuffle = True, random_state = repeat)
     insertion_avg_r2_score = 0.0
@@ -462,9 +449,9 @@ sequence_genom_context_gene_grna, sequence_pam_chromatin_per_gene_grna, sequence
 
 # cross_validation_model(sequence_pam_per_gene_grna, max_grad, max_grad)
 #cross_validation_model(sequence_pam_per_gene_grna, eff_vec, eff_vec)
-#cross_validation_model(sequence_pam_repeat_per_gene_grna, fraction_insertions, fraction_deletions)
-#cross_validation_model(sequence_pam_per_gene_grna, fraction_insertions, fraction_deletions)
-cross_validation_model(sequence_pam_homop_per_gene_grna, exp_insertion_length, exp_deletion_length)
+cross_validation_model(sequence_pam_per_gene_grna, fraction_insertions, fraction_deletions)
+#cross_validation_model(sequence_pam_homop_per_gene_grna, fraction_deletions, fraction_deletions)
+#cross_validation_model(sequence_pam_homop_per_gene_grna, exp_insertion_length, exp_deletion_length)
 
 #print "Using only grna sequence"
 #cross_validation_model(sequence_per_gene_grna, prop_insertions_gene_grna, prop_deletions_gene_grna)
