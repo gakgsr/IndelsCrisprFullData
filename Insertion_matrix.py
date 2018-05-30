@@ -24,7 +24,6 @@ def one_hot_index(nucleotide):
 
 insertion_file_names = []
 insertion_matrix = np.zeros((4,0))
-target_indel = '-1:1I'
 folder = '/Users/amirali/Projects/Ins_tbl/'
 for file in listdir(folder):
     samples = []
@@ -38,7 +37,6 @@ for file in listdir(folder):
 
     samples.sort()
     for sample in samples:
-
         insertion_file_names.append("%s-%d"  %(file[11:],sample))
 
     local_result_matrix = np.zeros((4,len(samples)))
@@ -103,3 +101,7 @@ for col in range(len(name_genes_grna_unique)):
 
 print np.mean(insertion_matrix_unique)
 pickle.dump(insertion_matrix_unique, open('Tcell-files/insertion_matrix_UNIQUE.p', 'wb'))
+
+insertion_matrix_unique = insertion_matrix_unique / np.reshape(np.sum(insertion_matrix_unique, axis=0), (1, -1))
+plt.stem(np.nanmean(insertion_matrix_unique,axis=1))
+plt.savefig('plots/insertion_hist.pdf')

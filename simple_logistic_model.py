@@ -369,8 +369,11 @@ def perform_logistic_regression(sequence_pam_per_gene_grna, count_insertions_gen
   log_reg.fit(sequence_pam_per_gene_grna[train_index], count_insertions_gene_grna_binary[train_index])
   log_reg_pred = log_reg.predict(sequence_pam_per_gene_grna[test_index])
   log_reg_pred_train = log_reg.predict(sequence_pam_per_gene_grna[train_index])
+  np.random.shuffle(log_reg_pred)
   insertions_accuracy = metrics.accuracy_score(count_insertions_gene_grna_binary[test_index], log_reg_pred)
-  insertions_f1 = f1_score(count_insertions_gene_grna_binary[test_index], log_reg_pred)
+  #insertions_f1 = f1_score(count_insertions_gene_grna_binary[test_index], log_reg_pred)
+  insertions_f1=1
+
   # ins_coeff.append(log_reg.coef_[0, :])
   # if to_plot:
   #   #plt.plot(log_reg.coef_[0, 0:92])
@@ -395,7 +398,9 @@ def perform_logistic_regression(sequence_pam_per_gene_grna, count_insertions_gen
   log_reg_pred = log_reg.predict(sequence_pam_per_gene_grna[test_index])
   log_reg_pred_train = log_reg.predict(sequence_pam_per_gene_grna[train_index])
   deletions_accuracy = metrics.accuracy_score(count_deletions_gene_grna_binary[test_index], log_reg_pred)
-  deletions_f1 = f1_score(count_deletions_gene_grna_binary[test_index], log_reg_pred)
+  #deletions_f1 = f1_score(count_deletions_gene_grna_binary[test_index], log_reg_pred)
+  deletions_f1=1
+
   # del_coeff.append(log_reg.coef_[0, :])
   # if to_plot:
   #   #plt.plot(log_reg.coef_[0, 0:92])
@@ -496,6 +501,16 @@ length_indel_deletion = pickle.load(open('Tcell-files/length_indel_deletion_ALL.
 homopolymer_matrix = pickle.load(open('Tcell-files/homology_matrix_UNIQUE.p', 'rb'))
 my_eff_vec = pickle.load(open('Tcell-files/my_eff_vec_UNIQUE_no_others.p', 'rb'))
 my_eff_vec = np.asarray(my_eff_vec)
+insertion_matrix = pickle.load(open('Tcell-files/insertion_matrix_UNIQUE.p', 'rb'))
+
+#insertion_matrix_max = np.zeros((2,len(name_genes_grna_unique)))
+#insertion_matrix_max[0,:] = np.max(insertion_matrix[[0,3],:],axis=0)
+#insertion_matrix_max[1,:] = np.max(insertion_matrix[[1,2],:],axis=0)
+insertion_matrix_max = np.argmax(insertion_matrix,axis=0)
+print insertion_matrix_max
+
+#print np.sum(insertion_matrix_max==0)
+#print np.sum(insertion_matrix_max==1)
 
 #indel_set_matrix,jaccard_matrix,unique_patient_per_site_index_list = variation_patients_and_lump(indel_count_matrix,sequence_file_name, name_genes_grna_unique)
 
@@ -509,7 +524,10 @@ entrop = entrop_finder(indel_count_matrix)
 
 
 #log_reg = linear_model.LogisticRegression(penalty='l2', C=1000)
-log_reg = XGBClassifier(n_estimators=30, max_depth=1)
+log_reg = XGBClassifier(n_estimators=10, max_depth=3)
+
+
+cross_validation_model(sequence_pam_per_gene_grna, insertion_matrix_max, insertion_matrix_max, log_reg)
 
 #print "Using all genomic context"
 #cross_validation_model(sequence_genom_context_gene_grna, count_insertions_gene_grna, count_deletions_gene_grna)
@@ -528,17 +546,99 @@ log_reg = XGBClassifier(n_estimators=30, max_depth=1)
 #k_mer_list = load_gene_sequence_k_mer(sequence_file_name, name_genes_grna_unique, 3)
 #cross_validation_model(k_mer_list, count_insertions_gene_grna, count_deletions_gene_grna)
 
-my_eff_vec_binary_tcel = np.zeros(len(name_genes_grna_unique))
-my_eff_vec_binary_tcel[my_eff_vec>np.median(my_eff_vec)]=1
+# my_eff_vec_binary_tcel = np.zeros(len(name_genes_grna_unique))
+# my_eff_vec_binary_tcel[my_eff_vec>np.median(my_eff_vec)]=1
+#
+# # entropy_binary = np.zeros(len(name_genes_grna_unique))
+# # entropy_binary[entrop>np.median(entrop)] = 1
+#
+# print "number of + samples in insertions is ", np.sum(my_eff_vec_binary_tcel)
+# print "number of - samples in insertions is ", np.shape(name_genes_grna_unique)[0] - np.sum(my_eff_vec_binary_tcel)
+#
+#
+# cross_validation_model(sequence_pam_per_gene_grna, my_eff_vec_binary_tcel, my_eff_vec_binary_tcel,log_reg)
 
-# entropy_binary = np.zeros(len(name_genes_grna_unique))
-# entropy_binary[entrop>np.median(entrop)] = 1
-
-print "number of + samples in insertions is ", np.sum(my_eff_vec_binary_tcel)
-print "number of - samples in insertions is ", np.shape(name_genes_grna_unique)[0] - np.sum(my_eff_vec_binary_tcel)
 
 
-cross_validation_model(sequence_pam_per_gene_grna, my_eff_vec_binary_tcel, my_eff_vec_binary_tcel,log_reg)
+
+
+#### here we run insertion accuracy
+#
+# exp_insertion_length_binary = np.zeros(len(name_genes_grna_unique))
+#
+# okay_insertion_index = list(set(np.where(exp_insertion_length>0)[0]))
+# ###
+# #okay_insertion_index = list(set(np.where(fraction_insertions>0.1)[0]))
+# ###
+# print "insertion mean = ", np.mean(exp_insertion_length[okay_insertion_index])
+# print "insertion median =", np.median(exp_insertion_length[okay_insertion_index])
+#
+# exp_insertion_length_binary[exp_insertion_length>np.median(exp_insertion_length[okay_insertion_index])] = 1
+#
+#
+#
+# exp_insertion_length_binary = exp_insertion_length_binary[okay_insertion_index]
+# sequence_pam_per_gene_grna = sequence_pam_per_gene_grna[okay_insertion_index,:]
+#
+# print np.shape(exp_insertion_length_binary)
+# print np.shape(sequence_pam_per_gene_grna)
+#
+# print "number of + samples in insertions is ", np.sum(exp_insertion_length_binary)
+# print "number of - samples in insertions is ", np.shape(exp_insertion_length_binary)[0] - np.sum(exp_insertion_length_binary)
+# cross_validation_model(sequence_pam_per_gene_grna, exp_insertion_length_binary, exp_insertion_length_binary,log_reg)
+
+
+# exp_deletion_length_binary = np.zeros(len(name_genes_grna_unique))
+# print "deletion mean = ", np.mean(exp_deletion_length)
+# print "deletion median =", np.median(exp_deletion_length)
+# exp_deletion_length_binary[exp_deletion_length> np.median(exp_deletion_length)] = 1
+# cross_validation_model(sequence_pam_per_gene_grna, exp_deletion_length_binary, exp_deletion_length_binary,log_reg)
+
+
+########
+
+#
+# okay_insertion_index = list(set(np.where(fraction_deletions >0)[0]))
+# toplot = np.copy(exp_deletion_length)
+# toplot = toplot[okay_insertion_index]
+# plt.hist(toplot, bins=100)
+# plt.savefig('plots/Expected_deletion_length_hist.pdf')
+# plt.clf()
+#
+# print "deletion mean = ", np.mean(exp_deletion_length)
+# print "deletion median =", np.median(exp_deletion_length)
+#
+# # plt.hist(exp_deletion_length)
+# # plt.savefig('plots/Expected_deletion_length_hist.pdf')
+# # plt.clf()
+#print "Using all genomic context"
+#cross_validation_model(sequence_genom_context_gene_grna, count_insertions_gene_grna, count_deletions_gene_grna)
+#cross_validation_model(sequence_genom_context_gene_grna, top_indel_vector, top_indel_vector)
+#print "Using both Spacer and PAM"
+#cross_validation_model(sequence_pam_homop_per_gene_grna, top_indel_vector, top_indel_vector)
+#cross_validation_model(sequence_pam_homop_per_gene_grna, top_indel_vector, top_indel_vector)
+#print np.shape(sequence_pam_per_gene_grna)
+#print count_insertions_gene_grna
+#cross_validation_model(sequence_pam_homop_per_gene_grna, count_insertions_gene_grna, count_deletions_gene_grna)
+#print "Using only Spacer"
+#cross_validation_model(sequence_per_gene_grna, count_insertions_gene_grna, count_deletions_gene_grna)
+#print "Using only PAM"
+#cross_validation_model(pam_per_gene_grna, count_insertions_gene_grna, count_deletions_gene_grna)
+#print "Using Kmers of Spacer + PAM"
+#k_mer_list = load_gene_sequence_k_mer(sequence_file_name, name_genes_grna_unique, 3)
+#cross_validation_model(k_mer_list, count_insertions_gene_grna, count_deletions_gene_grna)
+
+# my_eff_vec_binary_tcel = np.zeros(len(name_genes_grna_unique))
+# my_eff_vec_binary_tcel[my_eff_vec>np.median(my_eff_vec)]=1
+#
+# # entropy_binary = np.zeros(len(name_genes_grna_unique))
+# # entropy_binary[entrop>np.median(entrop)] = 1
+#
+# print "number of + samples in insertions is ", np.sum(my_eff_vec_binary_tcel)
+# print "number of - samples in insertions is ", np.shape(name_genes_grna_unique)[0] - np.sum(my_eff_vec_binary_tcel)
+#
+#
+# cross_validation_model(sequence_pam_per_gene_grna, my_eff_vec_binary_tcel, my_eff_vec_binary_tcel,log_reg)
 
 
 

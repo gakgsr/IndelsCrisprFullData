@@ -108,12 +108,20 @@ spacer_pam_list_UNIQUE = pickle.load(open('Tcell-files/spacer_pam_list_UNIQUE.p'
 eff_vec_BIG = pickle.load(open('storage/eff_vec_BIG_no_others.p', 'rb'))
 
 high_variance_indicator = np.zeros(len(spacer_pam_list_UNIQUE))
+print "total number of outcomes =", np.shape(spacer_pam_list_ALL)
+print "number of unique sites = ",np.shape(spacer_pam_list_UNIQUE)
 
+
+aaa = []
 for count1,spacer1 in enumerate(spacer_pam_list_UNIQUE):
   local_eff_vec = []
+  a = 0
   for count2,spacer2 in enumerate(spacer_pam_list_ALL):
     if spacer1==spacer2:
       local_eff_vec.append(eff_vec_BIG[count2])
+      a += 1
+
+  aaa.append(a)
   eff_vec_mean_no_others.append(np.mean(local_eff_vec))
 
   if np.std(local_eff_vec)>0.04:
@@ -121,13 +129,15 @@ for count1,spacer1 in enumerate(spacer_pam_list_UNIQUE):
 
 
 
-  print np.mean(local_eff_vec)
-  print np.std(local_eff_vec)
-  print np.shape(local_eff_vec)
-  print "----"
+  #print np.mean(local_eff_vec)
+  #print np.std(local_eff_vec)
+  #print np.shape(local_eff_vec)
+  #print "----"
 
 
-print sum(high_variance_indicator)
-pickle.dump(high_variance_indicator, open('Tcell-files/high_variance_indicator.p', 'wb'))
+#print sum(high_variance_indicator)
+#pickle.dump(high_variance_indicator, open('Tcell-files/high_variance_indicator.p', 'wb'))
 
 #pickle.dump(eff_vec_mean_no_others, open('Tcell-files/eff_vec_mean_UNIQUE_others_in_numinator.p', 'wb'))
+
+print "average number of pateitns per site = ", np.mean(aaa)

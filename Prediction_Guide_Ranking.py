@@ -197,6 +197,8 @@ oneI_frac,oneD_frac = oneI_oneD_fraction_over_total_finder(indel_prop_matrix,nam
 for site in name_genes_grna_unique:
     gene_list.append(site.split('-')[0])
 
+print "total number of genes", len(set(gene_list))
+
 lin_reg = XGBRegressor(n_estimators=30, max_depth=4) # 20,5 for frac insertion
 lin_reg.fit(sequence_pam_per_gene_grna_tcel[0:1203]   ,oneD_frac[0:1203])
 lin_reg_pred = lin_reg.predict(sequence_pam_per_gene_grna_tcel)
@@ -205,6 +207,7 @@ kendalltau_vec = []
 selected_counter = 0
 useful_counter = 0
 test_genes = np.unique(gene_list[1203:])
+print len()
 for counter, gene in enumerate(test_genes):
     print gene
     local_ind =  np.where(np.asarray(gene_list) == gene)[0]

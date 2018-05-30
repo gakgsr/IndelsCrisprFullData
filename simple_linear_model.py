@@ -360,7 +360,8 @@ def perform_linear_regression(sequence_pam_per_gene_grna, count_insertions_gene_
   insertions_r2_score = lin_reg.score(sequence_pam_per_gene_grna[test_index], count_insertions_gene_grna_binary[test_index])
   insertion_rmse = sqrt(mean_squared_error(lin_reg_pred,count_insertions_gene_grna_binary[test_index]))
   # ins_coeff.append(lin_reg.coef_)
-  # if to_plot:
+  if to_plot:
+      pickle.dump(lin_reg, open('models/edit_eff_tcells_chrom.p', 'wb'))
   #   pvalue_vec = f_regression(sequence_pam_per_gene_grna[test_index],lin_reg_pred, center=True)[1]
   #   #print np.shape(sequence_pam_per_gene_grna[test_index])
   #   #print np.shape(lin_reg_pred)
@@ -411,7 +412,7 @@ def cross_validation_model(sequence_pam_per_gene_grna, count_insertions_gene_grn
   del_coeff = []
   for repeat in range(10):
     print "repeat", repeat
-    number_of_splits = 5
+    number_of_splits = 12
     fold_valid = KFold(n_splits = number_of_splits, shuffle = True, random_state = repeat)
     insertion_avg_r2_score = 0.0
     deletion_avg_r2_score = 0.0
@@ -486,6 +487,15 @@ top_deletion_length_matrix = pickle.load(open('Tcell-files/top_deletion_length_m
 top_insertion_length_matrix = pickle.load(open('Tcell-files/top_insertion_length_matrix_UNIQUE.p', 'rb'))
 high_variance_indicator =  pickle.load(open('Tcell-files/high_variance_indicator.p', 'rb'))
 insertion_matrix = pickle.load(open('Tcell-files/insertion_matrix_UNIQUE.p', 'rb'))
+insertion_matrix_max = np.argmax(insertion_matrix,axis=0)
+
+insertion_matrix = insertion_matrix / np.reshape(np.sum(insertion_matrix, axis=0), (1, -1))
+
+## HDR
+hdr_eff = pickle.load(open('HDR/hdr_eff_matched.p', 'rb'))
+HDR_TCELL_matching_vector = pickle.load(open('HDR/HDR_TCELL_matching_vector.p', 'rb'))
+HDR_TCELL_matching_vector_unique,indicies = np.unique(HDR_TCELL_matching_vector, return_index=True)
+hdr_eff = hdr_eff[indicies]
 
 
 
@@ -528,6 +538,17 @@ my_eff_vec = np.asarray(my_eff_vec)
 mean_eff_vec = pickle.load(open('Tcell-files/eff_vec_mean_UNIQUE_no_others.p', 'rb'))
 mean_eff_vec = np.asarray(mean_eff_vec)
 
+
+
+# pickle.dump(fraction_insertions, open('Tcell-files/fraction_insertions_UNIQUE.p', 'wb'))
+# pickle.dump(fraction_deletions, open('Tcell-files/fraction_deletions_UNIQUE.p', 'wb'))
+# pickle.dump(fraction_insertions_all, open('Tcell-files/fraction_insertions_all_UNIQUE.p', 'wb'))
+# pickle.dump(fraction_deletions_all, open('Tcell-files/fraction_deletions_all_UNIQUE.p', 'wb'))
+# pickle.dump(exp_insertion_length, open('Tcell-files/exp_insertion_length_UNIQUE.p', 'wb'))
+# pickle.dump(exp_deletion_length, open('Tcell-files/exp_deletion_length_UNIQUE.p', 'wb'))
+# pickle.dump(entrop, open('Tcell-files/diversity_UNIQUE.p', 'wb'))
+
+
 # plt.plot(my_eff_vec,eff_vec,'o')
 # plt.xlabel('from data')
 # plt.ylabel('muteff')
@@ -557,9 +578,11 @@ mean_eff_vec = np.asarray(mean_eff_vec)
 #         #cross_validation_model(sequence_pam_chromatin_per_gene_grna, fraction_insertions, fraction_deletions)
 
 sequence_genom_context_gene_grna, sequence_pam_chromatin_per_gene_grna, sequence_pam_repeat_per_gene_grna, sequence_pam_coding_gccontent_per_gene_grna, sequence_pam_homop_per_gene_grna , sequence_pam_per_gene_grna, sequence_per_gene_grna, pam_per_gene_grna = load_gene_sequence(sequence_file_name, name_genes_grna_unique,homopolymer_matrix,intron_exon_label_vec)
-#sequence_pam_per_gene_grna = np.concatenate((sequence_pam_per_gene_grna, chrom_label_matrix), axis=1)
+sequence_pam_per_gene_grna = np.concatenate((sequence_pam_per_gene_grna, chrom_label_matrix[:,[0,17,32]]), axis=1)
 #sequence_pam_per_gene_grna = np.concatenate((sequence_pam_per_gene_grna, thermo_matrix[0]), axis=1)
+#sequence_pam_per_gene_grna = chrom_label_matrix
 
+sequence_pam_per_gene_grna = np.asarray(sequence_pam_per_gene_grna)[HDR_TCELL_matching_vector_unique,:]
 
 
 # good for edit eff
@@ -568,7 +591,7 @@ sequence_genom_context_gene_grna, sequence_pam_chromatin_per_gene_grna, sequence
 #lin_reg = linear_model.Ridge(alpha=10)
 # lin_reg = MLPRegressor(solver='lbfgs', alpha=1e-4, hidden_layer_sizes=(2,), random_state=1)
 #lin_reg = RandomForestRegressor(n_estimators = 100)
-lin_reg = XGBRegressor(n_estimators=600, max_depth=1)
+lin_reg = XGBRegressor(n_estimators=60, max_depth=1)
 #lin_reg = linear_model.LinearRegression()
 #eff_vec = np.sum(indel_prop_matrix,axis=0)
 
@@ -580,10 +603,12 @@ lin_reg = XGBRegressor(n_estimators=600, max_depth=1)
 #cross_validation_model(sequence_pam_chromatin_per_gene_grna, eff_vec, eff_vec)
 #cross_validation_model(sequence_pam_chromatin_per_gene_grna, eff_vec, eff_vec)
 
+
+### Filteration
 #mean_eff_vec = mean_eff_vec[high_variance_indicator==0]
 #sequence_pam_per_gene_grna = sequence_pam_per_gene_grna[high_variance_indicator==0,:]
 
-
+cross_validation_model(sequence_pam_per_gene_grna, hdr_eff, hdr_eff, lin_reg)
 #cross_validation_model(sequence_pam_per_gene_grna, insertion_matrix[2,:], insertion_matrix[3,:], lin_reg)
 #cross_validation_model(sequence_pam_per_gene_grna, oneI_frac, oneD_frac, lin_reg)
 #cross_validation_model(sequence_pam_per_gene_grna, max_grad, max_grad)
@@ -614,21 +639,24 @@ lin_reg = XGBRegressor(n_estimators=600, max_depth=1)
 # print "edi mean = ", np.mean(eff_vec)
 # print "edit median =", np.median(eff_vec)
 
+#print np.shape(top_insertion_length_matrix)
+#print np.mean(top_insertion_length_matrix,axis=1)
+
 #plt.hist(top_insertion_length_matrix[2,:], bins=100)
 #plt.savefig('plots/Top3-insertion-length.pdf')
 
-plt.hist(insertion_matrix[0,:])
-plt.savefig('plots/InsertionA.pdf')
-plt.clf()
-
-plt.hist(insertion_matrix[1,:])
-plt.savefig('plots/InsertionC.pdf')
-plt.clf()
-
-plt.hist(insertion_matrix[2,:])
-plt.savefig('plots/InsertionG.pdf')
-plt.clf()
-
-plt.hist(insertion_matrix[3,:])
-plt.savefig('plots/InsertionT.pdf')
-plt.clf()
+# plt.hist(insertion_matrix[0,:])
+# plt.savefig('plots/InsertionA.pdf')
+# plt.clf()
+#
+# plt.hist(insertion_matrix[1,:])
+# plt.savefig('plots/InsertionC.pdf')
+# plt.clf()
+#
+# plt.hist(insertion_matrix[2,:])
+# plt.savefig('plots/InsertionG.pdf')
+# plt.clf()
+#
+# plt.hist(insertion_matrix[3,:])
+# plt.savefig('plots/InsertionT.pdf')
+# plt.clf()
